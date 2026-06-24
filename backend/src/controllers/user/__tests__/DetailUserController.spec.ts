@@ -8,7 +8,7 @@ jest.mock("../../../services/DetailUserService");
 
 const app = express();
 app.use(express.json());
-app.get("/me", (req, res) => {
+app.get("/me", (req: any, res) => {
   req.user_id = "user-id-123";
   return new DetailUserController().handle(req, res);
 });
