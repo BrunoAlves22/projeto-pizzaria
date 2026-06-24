@@ -1,14 +1,17 @@
 import { describe, it, expect, jest, beforeEach } from "@jest/globals";
 import request from "supertest";
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
 import { CreateUserController } from "../CreateUserController";
 import { CreateUserService } from "../../../services/user/CreateUserService";
+import { AppError } from "../../../errors/AppError";
+import { errorHandler } from "../../../middlewares/errorHandler";
 
 jest.mock("../../../services/user/CreateUserService");
 
 const app = express();
 app.use(express.json());
-app.post("/users", (req, res) => new CreateUserController().handle(req, res));
+app.post("/users", (req, res, next) => new CreateUserController().handle(req, res, next));
+app.use(errorHandler);
 
 const CreateUserServiceMock = CreateUserService as jest.MockedClass<
   typeof CreateUserService
@@ -42,11 +45,11 @@ describe("CreateUserController", () => {
     expect(res.body).toEqual(fakeUser);
   });
 
-  it("deve retornar 400 se o usuário já existir", async () => {
+  it("deve retornar 409 se o usuário já existir", async () => {
     CreateUserServiceMock.mockImplementation(() => ({
       execute: jest
         .fn()
-        .mockRejectedValue(new Error("Usuário já existe") as never) as any,
+        .mockRejectedValue(new AppError("Usuário já existe", 409) as never) as any,
     }));
 
     const res = await request(app).post("/users").send({
@@ -55,7 +58,7 @@ describe("CreateUserController", () => {
       password: "123456",
     });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(409);
     expect(res.body).toEqual({ message: "Usuário já existe" });
   });
 
@@ -79,15 +82,20 @@ describe("CreateUserController", () => {
     });
   });
 
-  it("deve retornar 400 se os dados não forem enviados", async () => {
+  it("deve retornar 500 em caso de erro inesperado", async () => {
     CreateUserServiceMock.mockImplementation(() => ({
       execute: jest
         .fn()
-        .mockRejectedValue(new Error("Dados inválidos") as never) as any,
+        .mockRejectedValue(new Error("Erro de banco de dados") as never) as any,
     }));
 
-    const res = await request(app).post("/users").send({});
+    const res = await request(app).post("/users").send({
+      name: "Bruno",
+      email: "bruno@email.com",
+      password: "123456",
+    });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({ message: "Erro interno do servidor" });
   });
 });

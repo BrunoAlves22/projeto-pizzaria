@@ -1,6 +1,7 @@
 import { compare } from "bcryptjs";
 import prismaClient from "../../prisma";
 import { sign } from "jsonwebtoken";
+import { AppError } from "../../errors/AppError";
 
 interface AuthUserServiceProps {
   email: string;
@@ -16,13 +17,13 @@ class AuthUserService {
     });
 
     if (!userExists) {
-      throw new Error("E-mail ou senha incorretos");
+      throw new AppError("E-mail ou senha incorretos", 401);
     }
 
     const isPasswordValid = await compare(password, userExists.password);
 
     if (!isPasswordValid) {
-      throw new Error("E-mail ou senha incorretos");
+      throw new AppError("E-mail ou senha incorretos", 401);
     }
 
     const token = sign(

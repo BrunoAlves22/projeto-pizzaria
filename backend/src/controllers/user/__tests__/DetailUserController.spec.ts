@@ -3,15 +3,18 @@ import request from "supertest";
 import express from "express";
 import { DetailUserController } from "../DetailUserController";
 import { DetailUserService } from "../../../services/user/DetailUserService";
+import { AppError } from "../../../errors/AppError";
+import { errorHandler } from "../../../middlewares/errorHandler";
 
 jest.mock("../../../services/user/DetailUserService");
 
 const app = express();
 app.use(express.json());
-app.get("/me", (req: any, res) => {
+app.get("/me", (req: any, res, next) => {
   req.user_id = "user-id-123";
-  return new DetailUserController().handle(req, res);
+  return new DetailUserController().handle(req, res, next);
 });
+app.use(errorHandler);
 
 const DetailUserServiceMock = DetailUserService as jest.MockedClass<
   typeof DetailUserService
@@ -44,7 +47,7 @@ describe("DetailUserController", () => {
     DetailUserServiceMock.mockImplementation(() => ({
       execute: jest
         .fn()
-        .mockRejectedValue(new Error("Usuário não encontrado") as never) as any,
+        .mockRejectedValue(new AppError("Usuário não encontrado", 404) as never) as any,
     }));
 
     const res = await request(app).get("/me");
@@ -63,5 +66,18 @@ describe("DetailUserController", () => {
     await request(app).get("/me");
 
     expect(executeMock).toHaveBeenCalledWith({ id: "user-id-123" });
+  });
+
+  it("deve retornar 500 em caso de erro inesperado", async () => {
+    DetailUserServiceMock.mockImplementation(() => ({
+      execute: jest
+        .fn()
+        .mockRejectedValue(new Error("Erro de banco de dados") as never) as any,
+    }));
+
+    const res = await request(app).get("/me");
+
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({ message: "Erro interno do servidor" });
   });
 });

@@ -3,12 +3,15 @@ import request from "supertest";
 import express from "express";
 import { AuthUserController } from "../AuthUserController";
 import { AuthUserService } from "../../../services/user/AuthUserService";
+import { AppError } from "../../../errors/AppError";
+import { errorHandler } from "../../../middlewares/errorHandler";
 
 jest.mock("../../../services/user/AuthUserService");
 
 const app = express();
 app.use(express.json());
-app.post("/session", (req, res) => new AuthUserController().handle(req, res));
+app.post("/session", (req, res, next) => new AuthUserController().handle(req, res, next));
+app.use(errorHandler);
 
 const AuthUserServiceMock = AuthUserService as jest.MockedClass<
   typeof AuthUserService
@@ -46,7 +49,7 @@ describe("AuthUserController", () => {
       execute: jest
         .fn()
         .mockRejectedValue(
-          new Error("E-mail ou senha incorretos") as never,
+          new AppError("E-mail ou senha incorretos", 401) as never,
         ) as any,
     }));
 
@@ -75,5 +78,21 @@ describe("AuthUserController", () => {
       email: "bruno@email.com",
       password: "123456",
     });
+  });
+
+  it("deve retornar 500 em caso de erro inesperado", async () => {
+    AuthUserServiceMock.mockImplementation(() => ({
+      execute: jest
+        .fn()
+        .mockRejectedValue(new Error("Erro de banco de dados") as never) as any,
+    }));
+
+    const res = await request(app).post("/session").send({
+      email: "bruno@email.com",
+      password: "123456",
+    });
+
+    expect(res.status).toBe(500);
+    expect(res.body).toEqual({ message: "Erro interno do servidor" });
   });
 });
