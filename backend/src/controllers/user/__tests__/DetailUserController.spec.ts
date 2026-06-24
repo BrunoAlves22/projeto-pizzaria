@@ -2,9 +2,9 @@ import { describe, it, expect, jest, beforeEach } from "@jest/globals";
 import request from "supertest";
 import express from "express";
 import { DetailUserController } from "../DetailUserController";
-import { DetailUserService } from "../../../services/DetailUserService";
+import { DetailUserService } from "../../../services/user/DetailUserService";
 
-jest.mock("../../../services/DetailUserService");
+jest.mock("../../../services/user/DetailUserService");
 
 const app = express();
 app.use(express.json());

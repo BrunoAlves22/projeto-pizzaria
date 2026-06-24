@@ -2,9 +2,9 @@ import { describe, it, expect, jest, beforeEach } from "@jest/globals";
 import request from "supertest";
 import express from "express";
 import { CreateUserController } from "../CreateUserController";
-import { CreateUserService } from "../../../services/CreateUserService";
+import { CreateUserService } from "../../../services/user/CreateUserService";
 
-jest.mock("../../../services/CreateUserService");
+jest.mock("../../../services/user/CreateUserService");
 
 const app = express();
 app.use(express.json());

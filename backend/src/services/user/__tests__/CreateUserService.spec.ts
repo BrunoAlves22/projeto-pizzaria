@@ -1,9 +1,9 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import { CreateUserService } from "../CreateUserService";
-import prismaClient from "../../prisma";
+import prismaClient from "../../../prisma";
 import { hash } from "bcryptjs";
 
-jest.mock("../../prisma", () => ({
+jest.mock("../../../prisma", () => ({
   user: {
     findFirst: jest.fn(),
     create: jest.fn(),

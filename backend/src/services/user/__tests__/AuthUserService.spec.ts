@@ -1,10 +1,10 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import { AuthUserService } from "../AuthUserService";
-import prismaClient from "../../prisma";
+import prismaClient from "../../../prisma";
 import { compare } from "bcryptjs";
 import { sign } from "jsonwebtoken";
 
-jest.mock("../../prisma", () => ({
+jest.mock("../../../prisma", () => ({
   user: {
     findFirst: jest.fn(),
   },

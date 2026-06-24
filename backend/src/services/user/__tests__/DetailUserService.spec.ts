@@ -1,8 +1,8 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import { DetailUserService } from "../DetailUserService";
-import prismaClient from "../../prisma";
+import prismaClient from "../../../prisma";
 
-jest.mock("../../prisma", () => ({
+jest.mock("../../../prisma", () => ({
   user: {
     findFirst: jest.fn(),
   },
