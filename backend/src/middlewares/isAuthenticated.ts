@@ -14,8 +14,12 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
 
   const [, token] = authToken.split(" ");
 
+  if (!token) {
+    return res.status(401).json({ error: "Token não fornecido" });
+  }
+
   try {
-    const { sub } = verify(token!, process.env.JWT_SECRET as string) as Payload;
+    const { sub } = verify(token, process.env.JWT_SECRET as string) as Payload;
 
     req.user_id = sub;
 
