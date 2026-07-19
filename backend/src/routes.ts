@@ -12,7 +12,8 @@ import { ListCategoryController } from "./controllers/category/ListCategoryContr
 import { isAdmin } from "./middlewares/isAdmin";
 import { createCategorySchema } from "./schemas/categorySchema";
 import { CreateProductController } from "./controllers/products/CreateProductController";
-import { createProductSchema } from "./schemas/productSchema";
+import { ListProductController } from "./controllers/products/ListProductController";
+import { createProductSchema, listProductSchema } from "./schemas/productSchema";
 
 const router = Router();
 const upload = multer(uploadConfig);
@@ -53,4 +54,11 @@ router.post(
   validateSchema(createProductSchema),
   new CreateProductController().handle,
 );
+router.get(
+  "/products",
+  isAuthenticated,
+  validateSchema(listProductSchema),
+  new ListProductController().handle,
+);
+
 export { router };

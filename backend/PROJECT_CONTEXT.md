@@ -95,10 +95,18 @@ backend/
     │   │       ├── CreateUserController.spec.ts
     │   │       ├── AuthUserController.spec.ts
     │   │       └── DetailUserController.spec.ts
-    │   └── category/
-    │       ├── CreateCategoryController.ts
+    │   ├── category/
+    │   │   ├── CreateCategoryController.ts
+    │   │   ├── ListCategoryController.ts
+    │   │   └── __tests__/
+    │   │       ├── CreateCategoryController.spec.ts
+    │   │       └── ListCategoryController.spec.ts
+    │   └── products/
+    │       ├── CreateProductController.ts
+    │       ├── ListProductController.ts
     │       └── __tests__/
-    │           └── CreateCategoryController.spec.ts
+    │           ├── CreateProductController.spec.ts
+    │           └── ListProductController.spec.ts
     ├── services/
     │   ├── user/
     │   │   ├── CreateUserService.ts
@@ -108,10 +116,21 @@ backend/
     │   │       ├── CreateUserService.spec.ts
     │   │       ├── AuthUserService.spec.ts
     │   │       └── DetailUserService.spec.ts
-    │   └── category/
-    │       ├── CreateCategoryService.ts
+    │   ├── category/
+    │   │   ├── CreateCategoryService.ts
+    │   │   ├── ListCategoryService.ts
+    │   │   └── __tests__/
+    │   │       ├── CreateCategoryService.spec.ts
+    │   │       └── ListCategoryService.spec.ts
+    │   └── products/
+    │       ├── CreateProductService.ts
+    │       ├── ListProductService.ts
     │       └── __tests__/
-    │           └── CreateCategoryService.spec.ts
+    │           ├── CreateProductService.spec.ts
+    │           └── ListProductService.spec.ts
+    ├── config/
+    │   ├── multer.ts            # Configuração de upload (memoryStorage, filtro de mimetype, limite 5MB)
+    │   └── cloudinary.ts        # Configuração do client Cloudinary (v2)
     ├── middlewares/
     │   ├── errorHandler.ts     # Middleware global de erros
     │   ├── isAuthenticated.ts  # Validação do JWT
@@ -119,7 +138,8 @@ backend/
     │   └── validateSchema.ts   # Validação de body/query/params com Zod
     ├── schemas/
     │   ├── userSchema.ts       # Schemas Zod para rotas de usuário
-    │   └── categorySchema.ts   # Schema Zod para rota de categoria
+    │   ├── categorySchema.ts   # Schema Zod para rota de categoria
+    │   └── productSchema.ts   # Schema Zod para rota de produto
     ├── errors/
     │   └── AppError.ts         # Classe de erro customizada
     ├── prisma/
@@ -148,6 +168,8 @@ backend/
 | `cors` | `^2.8.6` | Middleware CORS |
 | `dotenv` | `^17.4.1` | Carregamento de variáveis de ambiente |
 | `tsx` | `^4.21.0` | Execução de TypeScript sem build |
+| `multer` | `^2.2.0` | Upload de arquivos (multipart/form-data) em memória |
+| `cloudinary` | `^2.10.0` | SDK para upload/armazenamento de imagens (banner de produto) |
 
 ### Desenvolvimento
 
@@ -167,6 +189,7 @@ backend/
 | `@types/cors` | `^2.8.19` | Tipos CORS |
 | `@types/node` | `^25.5.2` | Tipos Node.js |
 | `@types/pg` | `^8.20.0` | Tipos driver PG |
+| `@types/multer` | `^2.2.0` | Tipos multer |
 | `ts-node` | `^10.9.2` | Execução de TS para scripts |
 
 ### Scripts disponíveis
@@ -354,6 +377,9 @@ Relação: `Order 1 ── N OrderItem`
 | `POST` | `/session` | Não | Não | `authUserSchema` |
 | `GET` | `/me` | Sim | Não | — |
 | `POST` | `/category` | Sim | Sim | `createCategorySchema` |
+| `GET` | `/category-list` | Sim | Não | — |
+| `POST` | `/product` | Sim | Sim | `createProductSchema` (+ upload `file`) |
+| `GET` | `/products` | Sim | Não | `listProductSchema` |
 
 ---
 
@@ -462,6 +488,118 @@ Relação: `Order 1 ── N OrderItem`
 - `400` — nome da categoria vazio
 - `401` — não autenticado
 - `403` — usuário não é ADMIN
+
+---
+
+### `GET /category-list` — Listar categorias
+
+**Middlewares:** `isAuthenticated`  
+**Header:** `Authorization: Bearer <token>`
+
+**Resposta 200:**
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Pizzas",
+    "createdAt": "2024-01-01T00:00:00.000Z"
+  }
+]
+```
+
+Categorias ordenadas por `name` (asc). Não exige role `ADMIN` — qualquer usuário autenticado pode listar.
+
+**Erros:**
+- `401` — não autenticado
+
+---
+
+### `POST /product` — Criar produto
+
+**Middlewares:** `isAuthenticated` → `isAdmin` → `upload.single("file")` (multer) → `validateSchema(createProductSchema)`  
+**Header:** `Authorization: Bearer <token>` (usuário com role `ADMIN`)  
+**Content-Type:** `multipart/form-data`
+
+**Campos do form-data:**
+```
+name: string          (obrigatório)
+description: string   (obrigatório)
+price: string         (obrigatório, somente dígitos — ex.: "4500" para R$ 45,00 em centavos)
+categoryId: string    (obrigatório, deve existir em Category)
+file: <arquivo>        (obrigatório, JPEG/PNG/JPG, máx. 5MB)
+```
+
+**Fluxo:**
+1. `multer` valida mimetype (`image/jpeg`, `image/png`, `image/jpg`) e tamanho (máx. 5MB), armazenando o buffer em memória (`req.file.buffer`).
+2. `validateSchema(createProductSchema)` valida os campos de texto do `body`.
+3. O Controller verifica se `req.file` existe; caso contrário, lança `AppError("Nenhum arquivo enviado", 400)`.
+4. O `CreateProductService` verifica se a `categoryId` existe (senão `AppError("Categoria não encontrada", 404)`).
+5. Faz upload do buffer da imagem para o Cloudinary (pasta `pizzaria`, `public_id` com timestamp) via stream; falha no upload gera `AppError(502)`.
+6. Cria o produto no banco com a `secure_url` retornada como `banner`.
+
+**Resposta 201:**
+```json
+{
+  "id": "uuid",
+  "name": "Pizza Calabresa",
+  "description": "Molho, mussarela e calabresa",
+  "price": 4500,
+  "banner": "https://res.cloudinary.com/.../pizzaria/....jpg",
+  "categoryId": "uuid",
+  "createdAt": "2024-01-01T00:00:00.000Z"
+}
+```
+
+**Erros:**
+- `400` — validação do schema falhou, ou nenhum arquivo enviado
+- `401` — não autenticado
+- `403` — usuário não é ADMIN
+- `404` — categoria não encontrada
+- `502` — falha no upload para o Cloudinary
+- `500` — arquivo com mimetype não permitido (erro do `multer` não tratado como `AppError`) ou erro inesperado
+
+---
+
+### `GET /products` — Listar produtos
+
+**Middlewares:** `isAuthenticated` → `validateSchema(listProductSchema)`  
+**Header:** `Authorization: Bearer <token>`
+
+**Query params:**
+```
+disabled: "true" | "false"   (opcional — padrão: "false")
+```
+
+**Exemplos:**
+```
+GET /products               → filtra disabled = false
+GET /products?disabled=false → filtra disabled = false
+GET /products?disabled=true  → filtra disabled = true
+```
+
+O Controller lê `req.query.disabled` e converte para boolean com `=== "true"`; qualquer valor diferente de `"true"` (incluindo ausência do parâmetro) resulta em `disabled = false`. O schema apenas garante que, se enviado, o valor seja exatamente `"true"` ou `"false"`.
+
+**Resposta 200:**
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Pizza Calabresa",
+    "description": "Molho, mussarela e calabresa",
+    "price": 4500,
+    "banner": "https://res.cloudinary.com/.../pizzaria/....jpg",
+    "disabled": false,
+    "categoryId": "uuid",
+    "createdAt": "2024-01-01T00:00:00.000Z"
+  }
+]
+```
+
+Produtos ordenados por `name` (asc). Não exige role `ADMIN` — qualquer usuário autenticado pode listar.
+
+**Erros:**
+- `400` — valor de `disabled` inválido (diferente de `"true"`/`"false"`)
+- `401` — não autenticado
 
 ---
 
@@ -578,6 +716,46 @@ z.object({
 })
 ```
 
+### `createProductSchema`
+
+**Arquivo:** [src/schemas/productSchema.ts](src/schemas/productSchema.ts)
+
+```typescript
+z.object({
+  body: z.object({
+    name: z.string().min(1, { error: "O nome do produto é obrigatório" }),
+    description: z
+      .string()
+      .min(1, { error: "A descrição do produto é obrigatória" }),
+    price: z
+      .string()
+      .min(1, { error: "O preço do produto é obrigatório" })
+      .regex(/^\d+$/, { error: "O preço do produto deve ser um número" }),
+    categoryId: z.string().min(1, { error: "O ID da categoria é obrigatório" }),
+  }),
+})
+```
+
+`price` chega como `string` (form-data) e é validado por regex antes de ser convertido para `Int` (`parseInt`) no Controller.
+
+### `listProductSchema`
+
+**Arquivo:** [src/schemas/productSchema.ts](src/schemas/productSchema.ts)
+
+```typescript
+z.object({
+  query: z.object({
+    disabled: z
+      .enum(["true", "false"], {
+        error: "O parâmetro disabled deve ser 'true' ou 'false'",
+      })
+      .optional(),
+  }),
+})
+```
+
+Valida apenas o formato do query param; a conversão para `boolean` e o valor padrão (`false`) ficam a cargo do Controller (`req.query.disabled === "true"`).
+
 **Formato de erro retornado ao cliente:**
 ```json
 {
@@ -618,6 +796,7 @@ Usada nos Services para erros de negócio previsíveis. O `errorHandler` captura
 | `404` | Recurso não encontrado |
 | `409` | Conflito (e-mail já existe) |
 | `500` | Erro inesperado do servidor |
+| `502` | Falha ao integrar com serviço externo (upload de imagem no Cloudinary) |
 
 ---
 
@@ -685,10 +864,16 @@ src/**/*.ts
 | `AuthUserController` | 200 autenticado, 401 inválido, 500 erro inesperado |
 | `DetailUserController` | 200 encontrado, 404 não encontrado, 500 erro inesperado |
 | `CreateCategoryController` | 201 criada, 500 erro inesperado |
+| `ListCategoryController` | 200 lista categorias, 500 erro inesperado |
+| `CreateProductController` | 201 criado, 400 sem arquivo, 500 mimetype inválido, 404 categoria não encontrada, 500 erro inesperado |
+| `ListProductController` | 200 com disabled=false por padrão, 200 com disabled=true, 200 com disabled=false explícito, 500 erro inesperado |
 | `CreateUserService` | cria usuário, rejeita duplicado, hash da senha |
 | `AuthUserService` | retorna token, rejeita e-mail inválido, rejeita senha inválida |
 | `DetailUserService` | retorna usuário, lança 404 se não encontrar |
 | `CreateCategoryService` | cria categoria, propaga erros do Prisma |
+| `ListCategoryService` | lista categorias ordenadas por nome |
+| `CreateProductService` | cria produto, valida categoria existente, faz upload da imagem (Cloudinary mockado), propaga erro de upload como 502 |
+| `ListProductService` | lista produtos filtrando por `disabled` e ordenando por nome |
 
 ---
 
@@ -705,6 +890,9 @@ src/**/*.ts
 | `POSTGRES_PASSWORD` | `docker` | Senha do banco |
 | `POSTGRES_DB` | `pizzaria` | Nome do banco |
 | `POSTGRES_PORT` | `5432` | Porta do PostgreSQL |
+| `CLOUDINARY_CLOUD_NAME` | — | Nome da conta Cloudinary (upload de imagens de produto) |
+| `CLOUDINARY_API_KEY` | — | API key do Cloudinary |
+| `CLOUDINARY_API_SECRET` | — | API secret do Cloudinary |
 
 ### Dockerfile
 

@@ -13,3 +13,13 @@ export const createProductSchema = z.object({
     categoryId: z.string().min(1, { error: "O ID da categoria é obrigatório" }),
   }),
 });
+
+export const listProductSchema = z.object({
+  query: z.object({
+    disabled: z
+      .enum(["true", "false"], {
+        error: "O parâmetro disabled deve ser 'true' ou 'false'",
+      })
+      .optional(),
+  }),
+});
