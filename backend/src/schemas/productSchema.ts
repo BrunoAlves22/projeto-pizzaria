@@ -23,3 +23,9 @@ export const listProductSchema = z.object({
       .optional(),
   }),
 });
+
+export const archiveProductSchema = z.object({
+  query: z.object({
+    product_id: z.string().min(1, { error: "O ID do produto é obrigatório" }),
+  }),
+});

@@ -104,9 +104,11 @@ backend/
     │   └── products/
     │       ├── CreateProductController.ts
     │       ├── ListProductController.ts
+    │       ├── ArchiveProductController.ts
     │       └── __tests__/
     │           ├── CreateProductController.spec.ts
-    │           └── ListProductController.spec.ts
+    │           ├── ListProductController.spec.ts
+    │           └── ArchiveProductController.spec.ts
     ├── services/
     │   ├── user/
     │   │   ├── CreateUserService.ts
@@ -125,9 +127,11 @@ backend/
     │   └── products/
     │       ├── CreateProductService.ts
     │       ├── ListProductService.ts
+    │       ├── ArchiveProductService.ts
     │       └── __tests__/
     │           ├── CreateProductService.spec.ts
-    │           └── ListProductService.spec.ts
+    │           ├── ListProductService.spec.ts
+    │           └── ArchiveProductService.spec.ts
     ├── config/
     │   ├── multer.ts            # Configuração de upload (memoryStorage, filtro de mimetype, limite 5MB)
     │   └── cloudinary.ts        # Configuração do client Cloudinary (v2)
@@ -380,6 +384,7 @@ Relação: `Order 1 ── N OrderItem`
 | `GET` | `/category-list` | Sim | Não | — |
 | `POST` | `/product` | Sim | Sim | `createProductSchema` (+ upload `file`) |
 | `GET` | `/products` | Sim | Não | `listProductSchema` |
+| `PATCH` | `/product` | Sim | Sim | `archiveProductSchema` |
 
 ---
 
@@ -603,6 +608,33 @@ Produtos ordenados por `name` (asc). Não exige role `ADMIN` — qualquer usuár
 
 ---
 
+### `PATCH /product` — Arquivar produto
+
+**Middlewares:** `isAuthenticated` → `isAdmin` → `validateSchema(archiveProductSchema)`  
+**Header:** `Authorization: Bearer <token>` (usuário com role `ADMIN`)
+
+**Query params:**
+```
+product_id: string   (obrigatório)
+```
+
+**Fluxo:** o `ArchiveProductService` verifica se o produto existe (`findFirst`); se não existir, lança `AppError("Produto não encontrado", 404)`. Caso exista, atualiza `disabled: true`.
+
+**Resposta 200:**
+```json
+{
+  "message": "Produto arquivado com sucesso"
+}
+```
+
+**Erros:**
+- `400` — `product_id` não enviado
+- `401` — não autenticado
+- `403` — usuário não é ADMIN
+- `404` — produto não encontrado
+
+---
+
 ## Middlewares
 
 ### `isAuthenticated`
@@ -756,6 +788,18 @@ z.object({
 
 Valida apenas o formato do query param; a conversão para `boolean` e o valor padrão (`false`) ficam a cargo do Controller (`req.query.disabled === "true"`).
 
+### `archiveProductSchema`
+
+**Arquivo:** [src/schemas/productSchema.ts](src/schemas/productSchema.ts)
+
+```typescript
+z.object({
+  query: z.object({
+    product_id: z.string().min(1, { error: "O ID do produto é obrigatório" }),
+  }),
+})
+```
+
 **Formato de erro retornado ao cliente:**
 ```json
 {
@@ -867,6 +911,7 @@ src/**/*.ts
 | `ListCategoryController` | 200 lista categorias, 500 erro inesperado |
 | `CreateProductController` | 201 criado, 400 sem arquivo, 500 mimetype inválido, 404 categoria não encontrada, 500 erro inesperado |
 | `ListProductController` | 200 com disabled=false por padrão, 200 com disabled=true, 200 com disabled=false explícito, 500 erro inesperado |
+| `ArchiveProductController` | 200 arquivado, 404 produto não encontrado, 500 erro inesperado |
 | `CreateUserService` | cria usuário, rejeita duplicado, hash da senha |
 | `AuthUserService` | retorna token, rejeita e-mail inválido, rejeita senha inválida |
 | `DetailUserService` | retorna usuário, lança 404 se não encontrar |
@@ -874,6 +919,7 @@ src/**/*.ts
 | `ListCategoryService` | lista categorias ordenadas por nome |
 | `CreateProductService` | cria produto, valida categoria existente, faz upload da imagem (Cloudinary mockado), propaga erro de upload como 502 |
 | `ListProductService` | lista produtos filtrando por `disabled` e ordenando por nome |
+| `ArchiveProductService` | verifica existência do produto, arquiva (`disabled: true`), lança 404 se não encontrar, propaga erros inesperados do Prisma |
 
 ---
 
