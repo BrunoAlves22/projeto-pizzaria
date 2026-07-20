@@ -17,8 +17,10 @@ import {
   createProductSchema,
   listProductSchema,
   archiveProductSchema,
+  deleteProductSchema,
 } from "./schemas/productSchema";
 import { ArchiveProductController } from "./controllers/products/ArchiveProductController";
+import { DeleteProductController } from "./controllers/products/DeleteProductController";
 
 const router = Router();
 const upload = multer(uploadConfig);
@@ -71,6 +73,13 @@ router.patch(
   isAdmin,
   validateSchema(archiveProductSchema),
   new ArchiveProductController().handle,
+);
+router.delete(
+  "/product",
+  isAuthenticated,
+  isAdmin,
+  validateSchema(deleteProductSchema),
+  new DeleteProductController().handle,
 );
 
 export { router };
