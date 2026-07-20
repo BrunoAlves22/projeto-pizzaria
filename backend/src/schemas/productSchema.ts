@@ -35,3 +35,9 @@ export const deleteProductSchema = z.object({
     product_id: z.string().min(1, { error: "O ID do produto é obrigatório" }),
   }),
 });
+
+export const listProductByCategorySchema = z.object({
+  query: z.object({
+    category_id: z.string().min(1, { error: "O ID da categoria é obrigatório" }),
+  }),
+});
