@@ -48,7 +48,7 @@ describe("ListProductByCategoryService", () => {
     await service.execute({ category_id: "cat-id-1" });
 
     expect(findManyMock).toHaveBeenCalledWith({
-      where: { categoryId: "cat-id-1" },
+      where: { categoryId: "cat-id-1", disabled: false },
       select: {
         id: true,
         name: true,
