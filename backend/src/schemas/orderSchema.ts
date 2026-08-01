@@ -17,3 +17,14 @@ export const listOrderSchema = z.object({
       .optional(),
   }),
 });
+
+export const addItemOrderSchema = z.object({
+  body: z.object({
+    orderId: z.string({ error: "O ID do pedido é obrigatório" }),
+    productId: z.string({ error: "O ID do produto é obrigatório" }),
+    amount: z
+      .number({ error: "A quantidade é obrigatória" })
+      .int({ error: "A quantidade deve ser um número inteiro" })
+      .positive({ error: "A quantidade deve ser positiva" }),
+  }),
+});

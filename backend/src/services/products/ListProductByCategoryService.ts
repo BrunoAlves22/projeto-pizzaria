@@ -1,4 +1,5 @@
 import prismaClient from "../../prisma/index";
+import { AppError } from "../../errors/AppError";
 
 interface ListProductByCategoryDTO {
   category_id: string;
@@ -6,6 +7,16 @@ interface ListProductByCategoryDTO {
 
 class ListProductByCategoryService {
   async execute({ category_id }: ListProductByCategoryDTO) {
+    const categoryExists = await prismaClient.category.findFirst({
+      where: {
+        id: category_id,
+      },
+    });
+
+    if (!categoryExists) {
+      throw new AppError("Categoria não encontrada", 404);
+    }
+
     const products = await prismaClient.product.findMany({
       where: {
         categoryId: category_id,
