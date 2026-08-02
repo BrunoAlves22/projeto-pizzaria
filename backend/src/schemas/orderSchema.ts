@@ -28,3 +28,15 @@ export const addItemOrderSchema = z.object({
       .positive({ error: "A quantidade deve ser positiva" }),
   }),
 });
+
+export const removeItemOrderSchema = z.object({
+  query: z.object({
+    itemId: z.string().min(1, { error: "O ID do item é obrigatório" }),
+  }),
+});
+
+export const detailOrderSchema = z.object({
+  query: z.object({
+    orderId: z.string().min(1, { error: "O ID do pedido é obrigatório" }),
+  }),
+});
