@@ -101,14 +101,34 @@ backend/
     │   │   └── __tests__/
     │   │       ├── CreateCategoryController.spec.ts
     │   │       └── ListCategoryController.spec.ts
-    │   └── products/
-    │       ├── CreateProductController.ts
-    │       ├── ListProductController.ts
-    │       ├── ArchiveProductController.ts
+    │   ├── products/
+    │   │   ├── CreateProductController.ts
+    │   │   ├── ListProductController.ts
+    │   │   ├── ArchiveProductController.ts
+    │   │   ├── DeleteProductController.ts
+    │   │   ├── ListProductByCategoryController.ts
+    │   │   └── __tests__/
+    │   │       ├── CreateProductController.spec.ts
+    │   │       ├── ListProductController.spec.ts
+    │   │       └── ArchiveProductController.spec.ts
+    │   └── order/
+    │       ├── CreateOrderController.ts
+    │       ├── ListOrderController.ts
+    │       ├── AddItemOrderController.ts
+    │       ├── RemoveItemOrderController.ts
+    │       ├── DetailOrderController.ts
+    │       ├── SendOrderController.ts
+    │       ├── FinishOrderController.ts
+    │       ├── DeleteOrderController.ts
     │       └── __tests__/
-    │           ├── CreateProductController.spec.ts
-    │           ├── ListProductController.spec.ts
-    │           └── ArchiveProductController.spec.ts
+    │           ├── CreateOrderController.spec.ts
+    │           ├── ListOrderController.spec.ts
+    │           ├── AddItemOrderController.spec.ts
+    │           ├── RemoveItemOrderController.spec.ts
+    │           ├── DetailOrderController.spec.ts
+    │           ├── SendOrderController.spec.ts
+    │           ├── FinishOrderController.spec.ts
+    │           └── DeleteOrderController.spec.ts
     ├── services/
     │   ├── user/
     │   │   ├── CreateUserService.ts
@@ -124,14 +144,34 @@ backend/
     │   │   └── __tests__/
     │   │       ├── CreateCategoryService.spec.ts
     │   │       └── ListCategoryService.spec.ts
-    │   └── products/
-    │       ├── CreateProductService.ts
-    │       ├── ListProductService.ts
-    │       ├── ArchiveProductService.ts
+    │   ├── products/
+    │   │   ├── CreateProductService.ts
+    │   │   ├── ListProductService.ts
+    │   │   ├── ArchiveProductService.ts
+    │   │   ├── DeleteProductService.ts
+    │   │   ├── ListProductByCategoryService.ts
+    │   │   └── __tests__/
+    │   │       ├── CreateProductService.spec.ts
+    │   │       ├── ListProductService.spec.ts
+    │   │       └── ArchiveProductService.spec.ts
+    │   └── order/
+    │       ├── CreateOrderService.ts
+    │       ├── ListOrderService.ts
+    │       ├── AddItemOrderService.ts
+    │       ├── RemoveItemOrderService.ts
+    │       ├── DetailOrderService.ts
+    │       ├── SendOrderService.ts
+    │       ├── FinishOrderService.ts
+    │       ├── DeleteOrderService.ts
     │       └── __tests__/
-    │           ├── CreateProductService.spec.ts
-    │           ├── ListProductService.spec.ts
-    │           └── ArchiveProductService.spec.ts
+    │           ├── CreateOrderService.spec.ts
+    │           ├── ListOrderService.spec.ts
+    │           ├── AddItemOrderService.spec.ts
+    │           ├── RemoveItemOrderService.spec.ts
+    │           ├── DetailOrderService.spec.ts
+    │           ├── SendOrderService.spec.ts
+    │           ├── FinishOrderService.spec.ts
+    │           └── DeleteOrderService.spec.ts
     ├── config/
     │   ├── multer.ts            # Configuração de upload (memoryStorage, filtro de mimetype, limite 5MB)
     │   └── cloudinary.ts        # Configuração do client Cloudinary (v2)
@@ -143,7 +183,8 @@ backend/
     ├── schemas/
     │   ├── userSchema.ts       # Schemas Zod para rotas de usuário
     │   ├── categorySchema.ts   # Schema Zod para rota de categoria
-    │   └── productSchema.ts   # Schema Zod para rota de produto
+    │   ├── productSchema.ts   # Schemas Zod para rotas de produto
+    │   └── orderSchema.ts      # Schemas Zod para rotas de pedido
     ├── errors/
     │   └── AppError.ts         # Classe de erro customizada
     ├── prisma/
@@ -385,6 +426,18 @@ Relação: `Order 1 ── N OrderItem`
 | `POST` | `/product` | Sim | Sim | `createProductSchema` (+ upload `file`) |
 | `GET` | `/products` | Sim | Não | `listProductSchema` |
 | `PATCH` | `/product` | Sim | Sim | `archiveProductSchema` |
+| `DELETE` | `/product` | Sim | Sim | `deleteProductSchema` |
+| `GET` | `/category/product` | Sim | Não | `listProductByCategorySchema` |
+| `POST` | `/order` | Sim | Não | `createOrderSchema` |
+| `GET` | `/orders` | Sim | Não | `listOrderSchema` |
+| `POST` | `/order/add` | Sim | Não | `addItemOrderSchema` |
+| `DELETE` | `/order/remove` | Sim | Não | `removeItemOrderSchema` |
+| `GET` | `/order/detail` | Sim | Não | `detailOrderSchema` |
+| `PUT` | `/order/send` | Sim | Não | `sendOrderSchema` |
+| `PUT` | `/order/finish` | Sim | Não | `finishOrderSchema` |
+| `DELETE` | `/order/delete` | Sim | Não | `deleteOrderSchema` |
+
+> As rotas de pedido não exigem role `ADMIN` — qualquer usuário autenticado (`isAuthenticated`) pode criar, listar, editar itens, enviar para a cozinha, finalizar ou deletar pedidos.
 
 ---
 
@@ -635,6 +688,346 @@ product_id: string   (obrigatório)
 
 ---
 
+### `DELETE /product` — Deletar produto
+
+**Middlewares:** `isAuthenticated` → `isAdmin` → `validateSchema(deleteProductSchema)`  
+**Header:** `Authorization: Bearer <token>` (usuário com role `ADMIN`)
+
+**Query params:**
+```
+product_id: string   (obrigatório)
+```
+
+**Fluxo:** o `DeleteProductService` verifica se o produto existe (`findFirst`); se não existir, lança `AppError("Produto não encontrado", 404)`. Caso exista, remove o produto do banco.
+
+**Resposta 200:**
+```json
+{
+  "message": "Produto deletado com sucesso"
+}
+```
+
+**Erros:**
+- `400` — `product_id` não enviado
+- `401` — não autenticado
+- `403` — usuário não é ADMIN
+- `404` — produto não encontrado
+
+---
+
+### `GET /category/product` — Listar produtos de uma categoria
+
+**Middlewares:** `isAuthenticated` → `validateSchema(listProductByCategorySchema)`  
+**Header:** `Authorization: Bearer <token>`
+
+**Query params:**
+```
+category_id: string   (obrigatório, deve existir em Category)
+```
+
+**Fluxo:** o `ListProductByCategoryService` verifica se a categoria existe (`AppError("Categoria não encontrada", 404)`) e retorna apenas os produtos não desabilitados (`disabled: false`) dessa categoria, ordenados por `name` (asc).
+
+**Resposta 200:**
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Pizza Calabresa",
+    "description": "Molho, mussarela e calabresa",
+    "price": 4500,
+    "banner": "https://res.cloudinary.com/.../pizzaria/....jpg",
+    "disabled": false,
+    "categoryId": "uuid",
+    "createdAt": "2024-01-01T00:00:00.000Z"
+  }
+]
+```
+
+Não exige role `ADMIN` — qualquer usuário autenticado pode listar.
+
+**Erros:**
+- `400` — `category_id` não enviado
+- `401` — não autenticado
+- `404` — categoria não encontrada
+
+---
+
+### Fluxo de pedidos
+
+Fluxo típico de um pedido: `POST /order` (criado como rascunho, `draft: true`) → `POST /order/add` (adiciona itens) → `DELETE /order/remove` (remove item, se necessário) → `PUT /order/send` (envia para a cozinha, `draft: false`) → `PUT /order/finish` (finaliza, `status: true`). `DELETE /order/delete` pode ser usado em qualquer etapa para cancelar o pedido.
+
+### `POST /order` — Criar pedido
+
+**Middlewares:** `isAuthenticated` → `validateSchema(createOrderSchema)`
+
+**Body:**
+```json
+{
+  "table": 5,
+  "name": "João Silva"
+}
+```
+
+**Fluxo:** o `CreateOrderService` cria o pedido diretamente, sem verificações adicionais — `draft` e `status` assumem os defaults do banco (`true` e `false`, respectivamente).
+
+**Resposta 201:**
+```json
+{
+  "id": "uuid",
+  "table": 5,
+  "name": "João Silva",
+  "status": false,
+  "draft": true,
+  "createdAt": "2024-01-01T00:00:00.000Z"
+}
+```
+
+**Erros:**
+- `400` — `table` ou `name` inválidos/ausentes
+- `401` — não autenticado
+
+---
+
+### `GET /orders` — Listar pedidos
+
+**Middlewares:** `isAuthenticated` → `validateSchema(listOrderSchema)`
+
+**Query params:**
+```
+draft: "true" | "false"   (opcional)
+```
+
+O Controller lê `req.query.draft` e repassa como `string` ao Service, que converte com `draft === "true"`; qualquer valor diferente de `"true"` (incluindo ausência do parâmetro) resulta em `draft = false` no filtro.
+
+**Resposta 200:**
+```json
+[
+  {
+    "id": "uuid",
+    "table": 5,
+    "name": "João Silva",
+    "draft": true,
+    "status": false,
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "orderItems": [
+      {
+        "id": "uuid",
+        "amount": 2,
+        "product": {
+          "id": "uuid",
+          "name": "Pizza Calabresa",
+          "description": "Molho, mussarela e calabresa",
+          "price": 4500,
+          "banner": "https://res.cloudinary.com/.../pizzaria/....jpg"
+        }
+      }
+    ]
+  }
+]
+```
+
+**Erros:**
+- `400` — valor de `draft` inválido (diferente de `"true"`/`"false"`)
+- `401` — não autenticado
+
+---
+
+### `POST /order/add` — Adicionar item ao pedido
+
+**Middlewares:** `isAuthenticated` → `validateSchema(addItemOrderSchema)`
+
+**Body:**
+```json
+{
+  "orderId": "uuid",
+  "productId": "uuid",
+  "amount": 2
+}
+```
+
+**Fluxo:** o `AddItemOrderService` verifica se o pedido existe (`AppError("Pedido não encontrado", 404)`), depois se o produto existe e não está desabilitado (`AppError("Produto não encontrado", 404)`); só então cria o `OrderItem`.
+
+**Resposta 201:**
+```json
+{
+  "id": "uuid",
+  "amount": 2,
+  "orderId": "uuid",
+  "productId": "uuid",
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "product": {
+    "id": "uuid",
+    "name": "Pizza Calabresa",
+    "price": 4500,
+    "description": "Molho, mussarela e calabresa",
+    "banner": "https://res.cloudinary.com/.../pizzaria/....jpg"
+  }
+}
+```
+
+**Erros:**
+- `400` — campos inválidos/ausentes
+- `401` — não autenticado
+- `404` — pedido não encontrado ou produto não encontrado
+
+---
+
+### `DELETE /order/remove` — Remover item do pedido
+
+**Middlewares:** `isAuthenticated` → `validateSchema(removeItemOrderSchema)`
+
+**Query params:**
+```
+itemId: string   (obrigatório)
+```
+
+**Fluxo:** o `RemoveItemOrderService` verifica se o item existe (`AppError("Item não encontrado", 404)`) e o remove.
+
+**Resposta 200:**
+```json
+{
+  "message": "Item deletado com sucesso"
+}
+```
+
+**Erros:**
+- `400` — `itemId` não enviado
+- `401` — não autenticado
+- `404` — item não encontrado
+
+---
+
+### `GET /order/detail` — Detalhar pedido
+
+**Middlewares:** `isAuthenticated` → `validateSchema(detailOrderSchema)`
+
+**Query params:**
+```
+orderId: string   (obrigatório)
+```
+
+**Resposta 200:**
+```json
+{
+  "id": "uuid",
+  "table": 5,
+  "name": "João Silva",
+  "draft": true,
+  "status": false,
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "orderItems": [
+    {
+      "id": "uuid",
+      "amount": 2,
+      "product": {
+        "id": "uuid",
+        "name": "Pizza Calabresa",
+        "description": "Molho, mussarela e calabresa",
+        "price": 4500,
+        "banner": "https://res.cloudinary.com/.../pizzaria/....jpg"
+      }
+    }
+  ]
+}
+```
+
+**Erros:**
+- `400` — `orderId` não enviado
+- `401` — não autenticado
+- `404` — pedido não encontrado
+
+---
+
+### `PUT /order/send` — Enviar pedido para a cozinha
+
+**Middlewares:** `isAuthenticated` → `validateSchema(sendOrderSchema)`
+
+**Body:**
+```json
+{
+  "name": "João Silva",
+  "orderId": "uuid"
+}
+```
+
+**Fluxo:** o `SendOrderService` verifica se o pedido existe (`AppError("Pedido não encontrado", 404)`) e atualiza `draft: false` e `name`.
+
+**Resposta 200:**
+```json
+{
+  "id": "uuid",
+  "name": "João Silva",
+  "draft": false,
+  "table": 5,
+  "status": false,
+  "createdAt": "2024-01-01T00:00:00.000Z"
+}
+```
+
+**Erros:**
+- `400` — `name` ou `orderId` inválidos/ausentes
+- `401` — não autenticado
+- `404` — pedido não encontrado
+
+---
+
+### `PUT /order/finish` — Finalizar pedido
+
+**Middlewares:** `isAuthenticated` → `validateSchema(finishOrderSchema)`
+
+**Body:**
+```json
+{
+  "orderId": "uuid"
+}
+```
+
+**Fluxo:** o `FinishOrderService` verifica se o pedido existe (`AppError("Pedido não encontrado", 404)`) e atualiza `status: true`.
+
+**Resposta 200:**
+```json
+{
+  "id": "uuid",
+  "name": "João Silva",
+  "draft": false,
+  "table": 5,
+  "status": true,
+  "createdAt": "2024-01-01T00:00:00.000Z"
+}
+```
+
+**Erros:**
+- `400` — `orderId` inválido/ausente
+- `401` — não autenticado
+- `404` — pedido não encontrado
+
+---
+
+### `DELETE /order/delete` — Deletar pedido
+
+**Middlewares:** `isAuthenticated` → `validateSchema(deleteOrderSchema)`
+
+**Query params:**
+```
+orderId: string   (obrigatório)
+```
+
+**Fluxo:** o `DeleteOrderService` verifica se o pedido existe (`AppError("Pedido não encontrado", 404)`) e o remove (cascata remove também os `OrderItem` associados, conforme `onDelete: Cascade`).
+
+**Resposta 200:**
+```json
+{
+  "message": "Pedido deletado com sucesso"
+}
+```
+
+**Erros:**
+- `400` — `orderId` não enviado
+- `401` — não autenticado
+- `404` — pedido não encontrado
+
+---
+
 ## Middlewares
 
 ### `isAuthenticated`
@@ -800,6 +1193,138 @@ z.object({
 })
 ```
 
+### `deleteProductSchema`
+
+**Arquivo:** [src/schemas/productSchema.ts](src/schemas/productSchema.ts)
+
+```typescript
+z.object({
+  query: z.object({
+    product_id: z.string().min(1, { error: "O ID do produto é obrigatório" }),
+  }),
+})
+```
+
+### `listProductByCategorySchema`
+
+**Arquivo:** [src/schemas/productSchema.ts](src/schemas/productSchema.ts)
+
+```typescript
+z.object({
+  query: z.object({
+    category_id: z.string().min(1, { error: "O ID da categoria é obrigatório" }),
+  }),
+})
+```
+
+### `createOrderSchema`
+
+**Arquivo:** [src/schemas/orderSchema.ts](src/schemas/orderSchema.ts)
+
+```typescript
+z.object({
+  body: z.object({
+    table: z
+      .number({ error: "O número da mesa é obrigatório" })
+      .int({ error: "O número da mesa deve ser um número inteiro" })
+      .positive({ error: "O número da mesa deve ser positivo" }),
+    name: z.string().min(1, { error: "O nome do cliente é obrigatório" }),
+  }),
+})
+```
+
+### `listOrderSchema`
+
+**Arquivo:** [src/schemas/orderSchema.ts](src/schemas/orderSchema.ts)
+
+```typescript
+z.object({
+  query: z.object({
+    draft: z
+      .enum(["true", "false"], { error: "Erro ao validar o parâmetro draft" })
+      .optional(),
+  }),
+})
+```
+
+### `addItemOrderSchema`
+
+**Arquivo:** [src/schemas/orderSchema.ts](src/schemas/orderSchema.ts)
+
+```typescript
+z.object({
+  body: z.object({
+    orderId: z.string({ error: "O ID do pedido é obrigatório" }),
+    productId: z.string({ error: "O ID do produto é obrigatório" }),
+    amount: z
+      .number({ error: "A quantidade é obrigatória" })
+      .int({ error: "A quantidade deve ser um número inteiro" })
+      .positive({ error: "A quantidade deve ser positiva" }),
+  }),
+})
+```
+
+### `removeItemOrderSchema`
+
+**Arquivo:** [src/schemas/orderSchema.ts](src/schemas/orderSchema.ts)
+
+```typescript
+z.object({
+  query: z.object({
+    itemId: z.string().min(1, { error: "O ID do item é obrigatório" }),
+  }),
+})
+```
+
+### `detailOrderSchema`
+
+**Arquivo:** [src/schemas/orderSchema.ts](src/schemas/orderSchema.ts)
+
+```typescript
+z.object({
+  query: z.object({
+    orderId: z.string().min(1, { error: "O ID do pedido é obrigatório" }),
+  }),
+})
+```
+
+### `sendOrderSchema`
+
+**Arquivo:** [src/schemas/orderSchema.ts](src/schemas/orderSchema.ts)
+
+```typescript
+z.object({
+  body: z.object({
+    name: z.string().min(1, { error: "O nome do cliente é obrigatório" }),
+    orderId: z.string().min(1, { error: "O ID do pedido é obrigatório" }),
+  }),
+})
+```
+
+### `finishOrderSchema`
+
+**Arquivo:** [src/schemas/orderSchema.ts](src/schemas/orderSchema.ts)
+
+```typescript
+z.object({
+  body: z.object({
+    orderId: z.string().min(1, { error: "O ID do pedido é obrigatório" }),
+  }),
+})
+```
+
+### `deleteOrderSchema`
+
+**Arquivo:** [src/schemas/orderSchema.ts](src/schemas/orderSchema.ts)
+
+```typescript
+z.object({
+  query: z.object({
+    orderId: z.string().min(1, { error: "O ID do pedido é obrigatório" }),
+  }),
+})
+```
+
 **Formato de erro retornado ao cliente:**
 ```json
 {
@@ -912,6 +1437,14 @@ src/**/*.ts
 | `CreateProductController` | 201 criado, 400 sem arquivo, 500 mimetype inválido, 404 categoria não encontrada, 500 erro inesperado |
 | `ListProductController` | 200 com disabled=false por padrão, 200 com disabled=true, 200 com disabled=false explícito, 500 erro inesperado |
 | `ArchiveProductController` | 200 arquivado, 404 produto não encontrado, 500 erro inesperado |
+| `CreateOrderController` | 201 criado, 400 validação, 500 erro inesperado |
+| `ListOrderController` | 200 lista pedidos com/sem `draft`, 500 erro inesperado |
+| `AddItemOrderController` | 201 item criado, 404 pedido não encontrado, 404 produto não encontrado, 500 erro inesperado |
+| `RemoveItemOrderController` | 200 item removido, 404 item não encontrado, 500 erro inesperado |
+| `DetailOrderController` | 200 detalhes do pedido, 404 pedido não encontrado, 500 erro inesperado |
+| `SendOrderController` | 200 pedido enviado, 404 pedido não encontrado, 500 erro inesperado |
+| `FinishOrderController` | 200 pedido finalizado, 404 pedido não encontrado, 500 erro inesperado |
+| `DeleteOrderController` | 200 pedido deletado, 404 pedido não encontrado, 500 erro inesperado |
 | `CreateUserService` | cria usuário, rejeita duplicado, hash da senha |
 | `AuthUserService` | retorna token, rejeita e-mail inválido, rejeita senha inválida |
 | `DetailUserService` | retorna usuário, lança 404 se não encontrar |
@@ -920,6 +1453,14 @@ src/**/*.ts
 | `CreateProductService` | cria produto, valida categoria existente, faz upload da imagem (Cloudinary mockado), propaga erro de upload como 502 |
 | `ListProductService` | lista produtos filtrando por `disabled` e ordenando por nome |
 | `ArchiveProductService` | verifica existência do produto, arquiva (`disabled: true`), lança 404 se não encontrar, propaga erros inesperados do Prisma |
+| `CreateOrderService` | cria pedido com defaults (`draft: true`, `status: false`) |
+| `ListOrderService` | lista pedidos filtrando por `draft` e incluindo `orderItems`/`product` |
+| `AddItemOrderService` | valida pedido e produto existentes, cria `OrderItem` |
+| `RemoveItemOrderService` | valida item existente, remove, lança 404 se não encontrar |
+| `DetailOrderService` | retorna pedido com itens e produtos, lança 404 se não encontrar |
+| `SendOrderService` | atualiza `draft: false` e `name`, lança 404 se pedido não existir |
+| `FinishOrderService` | atualiza `status: true`, lança 404 se pedido não existir, não atualiza quando não encontrado |
+| `DeleteOrderService` | verifica existência, deleta, lança 404 se pedido não existir, não deleta quando não encontrado |
 
 ---
 
