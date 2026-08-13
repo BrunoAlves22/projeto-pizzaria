@@ -1,11 +1,17 @@
 import { Request, Response, NextFunction } from "express";
 import { verify } from "jsonwebtoken";
+import prismaClient from "../prisma/index";
 
 interface Payload {
   sub: string;
+  tokenVersion: number;
 }
 
-function isAuthenticated(req: Request, res: Response, next: NextFunction) {
+async function isAuthenticated(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
   const authToken = req.headers.authorization;
 
   if (!authToken) {
@@ -19,7 +25,20 @@ function isAuthenticated(req: Request, res: Response, next: NextFunction) {
   }
 
   try {
-    const { sub } = verify(token, process.env.JWT_SECRET as string) as Payload;
+    const { sub, tokenVersion } = verify(
+      token,
+      process.env.JWT_SECRET as string,
+      { algorithms: ["HS256"] },
+    ) as Payload;
+
+    const user = await prismaClient.user.findFirst({
+      where: { id: sub },
+      select: { tokenVersion: true },
+    });
+
+    if (!user || user.tokenVersion !== tokenVersion) {
+      return res.status(401).json({ error: "Token inválido" });
+    }
 
     req.user_id = sub;
 

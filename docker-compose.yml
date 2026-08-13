@@ -28,5 +28,19 @@ services:
       - ./backend:/app
       - /app/node_modules
     command: sh -c "npx prisma migrate deploy && npm run dev"
+  frontend:
+    build: ./frontend
+    container_name: pizzaria_frontend
+    env_file:
+      - "./frontend/.env"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    command: sh -c "npm run dev"
 volumes:
   pgdata:

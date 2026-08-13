@@ -30,6 +30,7 @@ const fakeUser = {
   email: "bruno@email.com",
   password: "hashed_password",
   role: "STAFF" as const,
+  tokenVersion: 0,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -99,9 +100,13 @@ describe("AuthUserService", () => {
     await service.execute({ email: "bruno@email.com", password: "123456" });
 
     expect(signMock).toHaveBeenCalledWith(
-      { name: fakeUser.name, email: fakeUser.email },
+      {
+        name: fakeUser.name,
+        email: fakeUser.email,
+        tokenVersion: fakeUser.tokenVersion,
+      },
       "test_secret",
-      { subject: fakeUser.id, expiresIn: "1d" },
+      { subject: fakeUser.id, expiresIn: "1d", algorithm: "HS256" },
     );
   });
 });

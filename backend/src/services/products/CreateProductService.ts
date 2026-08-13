@@ -34,13 +34,19 @@ class CreateProductService {
 
     let bannerUrl = "";
 
+    const sanitizedImageName = (imageName.split(".")[0] ?? "")
+      .normalize("NFKD")
+      .replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-zA-Z0-9_-]/g, "")
+      .slice(0, 100);
+
     try {
       const result = await new Promise<UploadApiResponse>((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
             folder: "pizzaria",
             resource_type: "image",
-            public_id: `${Date.now()}-${imageName.split(".")[0]}`,
+            public_id: `${Date.now()}-${sanitizedImageName}`,
           },
           (error, result) => {
             if (error || !result) {

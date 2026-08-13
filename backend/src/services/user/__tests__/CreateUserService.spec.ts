@@ -80,7 +80,7 @@ describe("CreateUserService", () => {
     expect(createMock).not.toHaveBeenCalled();
   });
 
-  it("deve chamar o hash com a senha e custo 8", async () => {
+  it("deve chamar o hash com a senha e custo 12", async () => {
     findFirstMock.mockResolvedValue(null);
     hashMock.mockResolvedValue("hashed_password" as never);
     createMock.mockResolvedValue({ name: "Bruno" } as never);
@@ -91,6 +91,6 @@ describe("CreateUserService", () => {
       password: "123456",
     });
 
-    expect(hashMock).toHaveBeenCalledWith("123456", 8);
+    expect(hashMock).toHaveBeenCalledWith("123456", 12);
   });
 });

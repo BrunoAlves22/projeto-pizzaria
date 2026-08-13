@@ -30,11 +30,13 @@ class AuthUserService {
       {
         name: userExists.name,
         email: userExists.email,
+        tokenVersion: userExists.tokenVersion,
       },
       process.env.JWT_SECRET as string,
       {
         subject: userExists.id,
         expiresIn: "1d",
+        algorithm: "HS256",
       },
     );
 

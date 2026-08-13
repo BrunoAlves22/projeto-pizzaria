@@ -6,7 +6,10 @@ const createUserSchema = z.object({
     email: z.email({ error: "Email inválido" }),
     password: z
       .string({ error: "Senha é obrigatória" })
-      .min(6, { error: "Senha tem que conter 6 caracteres no mínimo" }),
+      .min(8, { error: "Senha tem que conter 8 caracteres no mínimo" })
+      .regex(/[a-z]/, { error: "Senha deve conter ao menos uma letra minúscula" })
+      .regex(/[A-Z]/, { error: "Senha deve conter ao menos uma letra maiúscula" })
+      .regex(/[0-9]/, { error: "Senha deve conter ao menos um número" }),
   }),
 });
 

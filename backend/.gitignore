@@ -3,3 +3,7 @@ node_modules
 .env
 
 /src/generated/prisma
+
+# Cache que pode vazar do container (non-root HOME) para o bind mount
+.cache
+.npm
