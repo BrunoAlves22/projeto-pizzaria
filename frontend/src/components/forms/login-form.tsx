@@ -13,12 +13,12 @@ import {
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import { registerUser } from "@/actions/auth";
+import { loginUser } from "@/actions/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-export function RegisterForm() {
-  const [state, formAction, isPending] = useActionState(registerUser, null);
+export function LoginForm() {
+  const [state, formAction, isPending] = useActionState(loginUser, null);
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
 
@@ -43,19 +43,6 @@ export function RegisterForm() {
 
         <CardContent>
           <form action={formAction} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="name">Nome</Label>
-              <Input
-                type="text"
-                id="name"
-                name="name"
-                placeholder="Digite seu nome..."
-                required
-                minLength={3}
-                className="focus-visible:border-amber-500 focus-visible:ring-amber-500/30 dark:focus-visible:border-amber-400 dark:focus-visible:ring-amber-400/20 placeholder:text-sm placeholder:text-mist-400"
-              />
-            </div>
-
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -92,30 +79,30 @@ export function RegisterForm() {
                   )}
                 </button>
               </div>
-              <ul className="list-disc pl-5 space-y-0.5 text-xs text-amber-600 dark:text-amber-400">
-                <li>Mínimo de 8 caracteres</li>
-                <li>Uma letra maiúscula</li>
-                <li>Uma letra minúscula</li>
-                <li>Um número</li>
-              </ul>
             </div>
 
             <Button
               type="submit"
               className="mt-2 w-full bg-amber-500 text-white hover:bg-amber-600 focus-visible:ring-amber-500/40 dark:bg-amber-600 dark:hover:bg-amber-500 cursor-pointer transition-colors duration-200 ease-in-out focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
             >
-              {isPending ? "Cadastrando..." : "Cadastrar"}
+              {isPending ? "Entrando..." : "Entrar"}
             </Button>
+
+            {state?.error && (
+              <p className="mt-2 text-sm bg-red-200 rounded-md p-1 w-fit text-red-600 dark:text-red-400">
+                {state.error}
+              </p>
+            )}
           </form>
         </CardContent>
 
         <CardFooter className="justify-center gap-1 bg-muted/40 text-sm text-muted-foreground">
-          Já tem uma conta?
+          Ainda não tem uma conta?
           <Link
-            href="/login"
+            href="/register"
             className="font-medium text-amber-600 hover:underline dark:text-amber-400"
           >
-            Entrar
+            Criar conta
           </Link>
         </CardFooter>
       </Card>

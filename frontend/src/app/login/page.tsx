@@ -1,8 +1,9 @@
+import { LoginForm } from "@/components/forms/login-form";
+
 export default function LoginPage() {
   return (
-    <div>
-      <h1>Login Page</h1>
-      {/* Add your login form or content here */}
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
+      <LoginForm />
     </div>
   );
 }
