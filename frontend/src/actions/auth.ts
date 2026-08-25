@@ -3,6 +3,7 @@
 import { ApiError } from "@/lib/api-error";
 import { fetchApi } from "@/lib/api";
 import { LoginUser, RegisterUser } from "@/lib/types";
+import { setToken } from "@/lib/auth";
 
 type RegisterState = {
   success: boolean;
@@ -75,10 +76,12 @@ export async function loginUser(
   };
 
   try {
-    await fetchApi<LoginUser>("/session", {
+    const response = await fetchApi<LoginUser>("/session", {
       method: "POST",
       body: JSON.stringify(data),
     });
+
+    await setToken(response.token);
   } catch (err) {
     if (err instanceof ApiError) {
       switch (err.status) {

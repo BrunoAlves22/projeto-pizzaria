@@ -1,15 +1,14 @@
-export interface RegisterUser {
+export interface User {
   id: string;
   name: string;
   email: string;
   role: "ADMIN" | "STAFF";
+}
+
+export interface RegisterUser extends User {
   createdAt: string;
 }
 
-export interface LoginUser {
-  id: string;
-  name: string;
-  email: string;
-  role: "ADMIN" | "STAFF";
+export interface LoginUser extends User {
   token: string;
 }
