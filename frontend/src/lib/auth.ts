@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { ApiError } from "./api-error";
 import { fetchApi } from "./api";
 import { User } from "./types";
+import { redirect } from "next/navigation";
 
 const COOKIE_NAME = "token_pizzaria";
 const COOKIE_PATH = "/";
@@ -49,3 +50,14 @@ export const getUser = cache(async (): Promise<User | null> => {
     return null;
   }
 });
+
+export async function requiredAdminUser(): Promise<User> {
+  const user = await getUser();
+  if (!user) {
+    redirect("/login");
+  }
+  if (user?.role !== "ADMIN") {
+    redirect("/access-denied");
+  }
+  return user;
+}
