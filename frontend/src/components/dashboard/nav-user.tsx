@@ -24,7 +24,7 @@ export function NavUser({ user }: { user: User }) {
       <SidebarSeparator className="mb-1" />
 
       <div className="flex items-center gap-2 px-2 py-1.5 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sidebar-primary text-xs font-semibold text-sidebar-primary-foreground">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-500 text-xs font-semibold text-white dark:bg-amber-600">
           {getInitials(user.name)}
         </span>
         <div className="flex min-w-0 flex-1 flex-col group-data-[collapsible=icon]:hidden">

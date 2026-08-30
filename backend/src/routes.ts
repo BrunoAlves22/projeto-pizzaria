@@ -11,9 +11,15 @@ import { LogoutController } from "./controllers/user/LogoutController";
 import { isAuthenticated } from "./middlewares/isAuthenticated";
 import { CreateCategoryController } from "./controllers/category/CreateCategoryController";
 import { ListCategoryController } from "./controllers/category/ListCategoryController";
+import { DeleteCategoryController } from "./controllers/category/DeleteCategoryController";
+import { MoveCategoryProductsController } from "./controllers/category/MoveCategoryProductsController";
 import { isAdmin } from "./middlewares/isAdmin";
 import { auditLog } from "./middlewares/auditLog";
-import { createCategorySchema } from "./schemas/categorySchema";
+import {
+  createCategorySchema,
+  deleteCategorySchema,
+  moveCategoryProductsSchema,
+} from "./schemas/categorySchema";
 import { CreateProductController } from "./controllers/products/CreateProductController";
 import { ListProductController } from "./controllers/products/ListProductController";
 import {
@@ -77,6 +83,22 @@ router.get(
   "/category-list",
   isAuthenticated,
   new ListCategoryController().handle,
+);
+router.delete(
+  "/category",
+  isAuthenticated,
+  isAdmin,
+  auditLog,
+  validateSchema(deleteCategorySchema),
+  new DeleteCategoryController().handle,
+);
+router.patch(
+  "/category/products",
+  isAuthenticated,
+  isAdmin,
+  auditLog,
+  validateSchema(moveCategoryProductsSchema),
+  new MoveCategoryProductsController().handle,
 );
 
 // Product routes
