@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
@@ -13,12 +13,19 @@ export function RegisterForm() {
   const [state, formAction, isPending] = useActionState(registerUser, null);
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (state?.redirectTo) {
       router.push(state.redirectTo);
+      return;
     }
-  }, [state?.redirectTo, router]);
+
+    if (state?.error) {
+      passwordRef.current!.value = "";
+      passwordRef.current?.focus();
+    }
+  }, [state, router]);
 
   return (
     <AuthCard
@@ -59,6 +66,7 @@ export function RegisterForm() {
           <Label htmlFor="password">Senha</Label>
           <div className="relative">
             <Input
+              ref={passwordRef}
               type={showPassword ? "text" : "password"}
               id="password"
               name="password"

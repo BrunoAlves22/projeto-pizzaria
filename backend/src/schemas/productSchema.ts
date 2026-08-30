@@ -3,9 +3,7 @@ import { z } from "zod";
 export const createProductSchema = z.object({
   body: z.object({
     name: z.string().min(1, { error: "O nome do produto é obrigatório" }),
-    description: z
-      .string()
-      .min(1, { error: "A descrição do produto é obrigatória" }),
+    description: z.string().optional(),
     price: z
       .string()
       .min(1, { error: "O preço do produto é obrigatório" })

@@ -23,7 +23,7 @@ export function AppSidebar({ user }: { user: User }) {
               render={<Link href="/dashboard" />}
               tooltip="AS Pizzaria"
             >
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white dark:bg-amber-600">
                 <Pizza className="size-4" />
               </span>
               <div className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">

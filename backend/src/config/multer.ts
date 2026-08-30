@@ -11,12 +11,17 @@ export default {
     file: Express.Multer.File,
     cb: multer.FileFilterCallback,
   ) => {
-    const allowedMimeTypes = ["image/jpeg", "image/png", "image/jpg"];
+    const allowedMimeTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/jpg",
+      "image/webp",
+    ];
 
     if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Apenas arquivos JPEG, PNG e JPG são permitidos."));
+      cb(new Error("Apenas arquivos JPEG, PNG, JPG e WEBP são permitidos."));
     }
   },
 };

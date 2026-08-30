@@ -43,6 +43,7 @@ function NavGroup({ label, items }: { label: string; items: NavItem[] }) {
               render={<Link href={item.url} />}
               isActive={isItemActive(pathname, item.url)}
               tooltip={item.title}
+              className="data-active:bg-amber-500/10 data-active:font-medium data-active:text-amber-700 dark:data-active:text-amber-400"
             >
               <item.icon />
               <span>{item.title}</span>
