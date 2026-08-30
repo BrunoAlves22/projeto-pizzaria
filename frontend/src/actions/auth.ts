@@ -1,9 +1,10 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { ApiError } from "@/lib/api-error";
 import { fetchApi } from "@/lib/api";
 import { LoginUser, RegisterUser } from "@/lib/types";
-import { setToken } from "@/lib/auth";
+import { getToken, removeToken, setToken } from "@/lib/auth";
 
 type RegisterState = {
   success: boolean;
@@ -113,4 +114,19 @@ export async function loginUser(
   }
 
   return { success: true, error: "", redirectTo: "/dashboard" };
+}
+
+export async function logoutUser() {
+  const token = await getToken();
+
+  if (token) {
+    try {
+      await fetchApi("/logout", { method: "POST", token });
+    } catch (err) {
+      console.error("Erro ao fazer logout:", err);
+    }
+  }
+
+  await removeToken();
+  redirect("/login");
 }

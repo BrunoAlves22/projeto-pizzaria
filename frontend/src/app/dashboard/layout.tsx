@@ -1,12 +1,22 @@
 import { ReactNode } from "react";
 import { requiredAdminUser } from "@/lib/auth";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/dashboard/app-sidebar";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  await requiredAdminUser();
+  const user = await requiredAdminUser();
 
-  return <>{children}</>;
+  return (
+    <SidebarProvider>
+      <AppSidebar user={user} />
+      <main className="flex flex-1 flex-col">
+        <SidebarTrigger />
+        {children}
+      </main>
+    </SidebarProvider>
+  );
 }
