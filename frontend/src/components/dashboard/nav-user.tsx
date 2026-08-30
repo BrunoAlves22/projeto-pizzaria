@@ -43,7 +43,7 @@ export function NavUser({ user }: { user: User }) {
             <SidebarMenuButton
               type="submit"
               tooltip="Sair"
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              className="text-destructive cursor-pointer hover:bg-destructive/10 hover:text-destructive"
             >
               <LogOut />
               <span>Sair</span>

@@ -7,7 +7,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
 } from "@/components/ui/sidebar";
 import { NavMain } from "@/components/dashboard/nav-main";
 import { NavUser } from "@/components/dashboard/nav-user";
@@ -45,7 +44,6 @@ export function AppSidebar({ user }: { user: User }) {
       </SidebarContent>
 
       <NavUser user={user} />
-      <SidebarRail />
     </Sidebar>
   );
 }

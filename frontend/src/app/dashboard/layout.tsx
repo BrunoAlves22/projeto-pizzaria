@@ -14,7 +14,9 @@ export default async function DashboardLayout({
     <SidebarProvider>
       <AppSidebar user={user} />
       <main className="flex flex-1 flex-col">
-        <SidebarTrigger />
+        <div className="flex items-center p-2">
+          <SidebarTrigger />
+        </div>
         {children}
       </main>
     </SidebarProvider>
