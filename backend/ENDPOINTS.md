@@ -391,6 +391,8 @@ draft: "true" | "false"   (opcional — ausência ou valor diferente de "true" f
 
 Valida pedido existente e produto existente/não desabilitado antes de criar o item.
 
+Se o pedido **já tiver um item do mesmo produto**, a quantidade (`amount`) é somada a esse item e nenhuma linha nova é criada. A resposta é o item resultante (novo ou atualizado).
+
 **Resposta 201:**
 ```json
 {
