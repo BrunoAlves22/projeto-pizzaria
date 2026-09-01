@@ -18,7 +18,7 @@ type NavItem = {
 };
 
 const generalItems: NavItem[] = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Pedidos", url: "/dashboard", icon: LayoutDashboard },
 ];
 
 const cardapioItems: NavItem[] = [

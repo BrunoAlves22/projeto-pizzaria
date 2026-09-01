@@ -29,3 +29,29 @@ export interface Product {
   categoryId: string;
   createdAt: string;
 }
+
+export interface OrderItemProduct {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  banner: string;
+}
+
+export interface OrderItem {
+  id: string;
+  amount: number;
+  product: OrderItemProduct;
+}
+
+export interface Order {
+  id: string;
+  table: number;
+  name: string | null;
+  /** `true` enquanto o garçom monta o pedido; `false` depois de enviado para a cozinha. */
+  draft: boolean;
+  /** `true` quando o pedido foi finalizado. */
+  status: boolean;
+  createdAt: string;
+  orderItems: OrderItem[];
+}
