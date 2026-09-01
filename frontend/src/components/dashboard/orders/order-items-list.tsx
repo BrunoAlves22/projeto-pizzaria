@@ -1,10 +1,12 @@
 import Image from "next/image";
 import { ChefHat } from "lucide-react";
 import type { OrderItem } from "@/lib/types";
-import { formatCurrency } from "@/lib/order-utils";
+import { formatCurrency, groupOrderItems } from "@/lib/order-utils";
 
 export function OrderItemsList({ items }: { items: OrderItem[] }) {
-  if (items.length === 0) {
+  const grouped = groupOrderItems(items);
+
+  if (grouped.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
         Este pedido não tem itens.
@@ -14,8 +16,8 @@ export function OrderItemsList({ items }: { items: OrderItem[] }) {
 
   return (
     <ul className="flex flex-col divide-y">
-      {items.map((item) => (
-        <li key={item.id} className="flex items-center gap-3 py-3">
+      {grouped.map((item) => (
+        <li key={item.productId} className="flex items-center gap-3 py-3">
           <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
             {item.product.banner ? (
               <Image

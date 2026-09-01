@@ -6,6 +6,7 @@ import type { Order } from "@/lib/types";
 import {
   formatCurrency,
   formatTime,
+  groupOrderItems,
   orderTotal,
   relativeTime,
 } from "@/lib/order-utils";
@@ -24,8 +25,9 @@ export function OrderCard({
   now: number;
   onSelect: (id: string) => void;
 }) {
-  const previewItems = order.orderItems.slice(0, PREVIEW_ITEM_LIMIT);
-  const hiddenItems = order.orderItems.length - previewItems.length;
+  const groupedItems = groupOrderItems(order.orderItems);
+  const previewItems = groupedItems.slice(0, PREVIEW_ITEM_LIMIT);
+  const hiddenItems = groupedItems.length - previewItems.length;
 
   return (
     <button
@@ -60,7 +62,7 @@ export function OrderCard({
 
       <ul className="flex flex-col gap-1 text-sm text-muted-foreground">
         {previewItems.map((item) => (
-          <li key={item.id} className="truncate">
+          <li key={item.productId} className="truncate">
             <span className="font-medium text-foreground">{item.amount}×</span>{" "}
             {item.product.name}
           </li>

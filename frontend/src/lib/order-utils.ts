@@ -1,4 +1,4 @@
-import type { Order } from "@/lib/types";
+import type { Order, OrderItem } from "@/lib/types";
 
 export function formatCurrency(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", {
@@ -44,4 +44,38 @@ export function orderTotal(order: Order) {
 /** Quantidade somada de unidades do pedido. */
 export function orderItemCount(order: Order) {
   return order.orderItems.reduce((sum, item) => sum + item.amount, 0);
+}
+
+export type GroupedOrderItem = {
+  productId: string;
+  product: OrderItem["product"];
+  amount: number;
+  /** ids dos OrderItem originais que foram somados nesta linha. */
+  itemIds: string[];
+};
+
+/**
+ * Junta itens do mesmo produto numa linha só, somando as quantidades. O backend
+ * cria um OrderItem novo a cada `POST /order/add`, mesmo quando o produto se
+ * repete — aqui consolidamos para exibição, preservando a ordem de entrada.
+ */
+export function groupOrderItems(items: OrderItem[]): GroupedOrderItem[] {
+  const byProduct = new Map<string, GroupedOrderItem>();
+
+  for (const item of items) {
+    const existing = byProduct.get(item.product.id);
+    if (existing) {
+      existing.amount += item.amount;
+      existing.itemIds.push(item.id);
+    } else {
+      byProduct.set(item.product.id, {
+        productId: item.product.id,
+        product: item.product,
+        amount: item.amount,
+        itemIds: [item.id],
+      });
+    }
+  }
+
+  return [...byProduct.values()];
 }
