@@ -12,9 +12,12 @@ const envSchema = z.object({
   // balancer (nginx, Cloudflare, etc.). Aceita um número (quantidade de saltos
   // confiáveis) ou "true". Sem isso, o rate limit por IP não distingue clientes
   // atrás do proxy.
+  // Aceita ausente ou vazio (KEY= no .env) como "não confiar".
   TRUST_PROXY: z
-    .string()
-    .regex(/^(true|false|\d+)$/, "TRUST_PROXY deve ser 'true', 'false' ou um número")
+    .union([
+      z.literal(""),
+      z.string().regex(/^(true|false|\d+)$/, "TRUST_PROXY deve ser 'true', 'false' ou um número"),
+    ])
     .optional(),
 });
 
