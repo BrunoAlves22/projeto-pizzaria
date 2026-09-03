@@ -19,7 +19,7 @@ Authorization: Bearer <token>
 
 | Método | Rota | Auth | Admin | Schema |
 |---|---|---|---|---|
-| `POST` | `/users` | Não | Não | `createUserSchema` |
+| `POST` | `/users` | Sim | Sim | `createUserSchema` |
 | `POST` | `/session` | Não | Não | `authUserSchema` |
 | `GET` | `/me` | Sim | Não | — |
 | `POST` | `/logout` | Sim | Não | — |
@@ -45,18 +45,22 @@ Authorization: Bearer <token>
 
 ### `POST /users` — Criar usuário
 
-**Middlewares:** `authLimiter` → `validateSchema(createUserSchema)`
+**Middlewares:** `isAuthenticated` → `isAdmin` → `auditLog` → `validateSchema(createUserSchema)`
+**Header:** `Authorization: Bearer <token>` (role `ADMIN`)
+
+Rota restrita a `ADMIN`. O primeiro admin é criado pelo seed (`npx prisma db seed`, lendo `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_NAME` do `.env`).
 
 **Body:**
 ```json
 {
   "name": "João Silva",
   "email": "joao@email.com",
-  "password": "Senha123"
+  "password": "Senha123",
+  "role": "STAFF"
 }
 ```
 
-Senha deve ter no mínimo 8 caracteres, com ao menos uma letra maiúscula, uma minúscula e um número.
+Senha deve ter no mínimo 8 caracteres, com ao menos uma letra maiúscula, uma minúscula e um número. `role` é opcional (`"STAFF"` padrão ou `"ADMIN"`).
 
 **Resposta 201:**
 ```json
@@ -69,13 +73,13 @@ Senha deve ter no mínimo 8 caracteres, com ao menos uma letra maiúscula, uma m
 }
 ```
 
-**Erros:** `400` validação falhou · `409` e-mail já cadastrado · `429` muitas tentativas (rate limit)
+**Erros:** `400` validação falhou · `401` não autenticado · `403` não é ADMIN · `409` e-mail já cadastrado
 
 ---
 
 ### `POST /session` — Autenticar usuário
 
-**Middlewares:** `authLimiter` → `validateSchema(authUserSchema)`
+**Middlewares:** `authLimiter` (chave IP + e-mail, ignora logins bem-sucedidos, 20/15min) → `validateSchema(authUserSchema)`
 
 **Body:**
 ```json
@@ -473,7 +477,7 @@ orderId: string   (obrigatório)
 
 ### `PUT /order/send` — Enviar pedido para a cozinha
 
-**Middlewares:** `isAuthenticated` → `validateSchema(sendOrderSchema)`
+**Middlewares:** `isAuthenticated` → `auditLog` → `validateSchema(sendOrderSchema)`
 
 **Body:**
 ```json
@@ -500,7 +504,7 @@ Atualiza `draft: false` e `name`.
 
 ### `PUT /order/finish` — Finalizar pedido
 
-**Middlewares:** `isAuthenticated` → `validateSchema(finishOrderSchema)`
+**Middlewares:** `isAuthenticated` → `auditLog` → `validateSchema(finishOrderSchema)`
 
 **Body:**
 ```json
@@ -527,7 +531,7 @@ Atualiza `status: true`.
 
 ### `DELETE /order/delete` — Deletar pedido
 
-**Middlewares:** `isAuthenticated` → `validateSchema(deleteOrderSchema)`
+**Middlewares:** `isAuthenticated` → `auditLog` → `validateSchema(deleteOrderSchema)`
 
 **Query params:**
 ```
@@ -554,7 +558,7 @@ Remove o pedido; itens (`OrderItem`) são removidos em cascata (`onDelete: Casca
 | `403` | Autenticado mas sem permissão (não é ADMIN) |
 | `404` | Recurso não encontrado |
 | `409` | Conflito (e-mail já existe) |
-| `429` | Muitas requisições (rate limit) — aplicado globalmente e, de forma mais restrita, em `/session` e `/users` |
+| `429` | Muitas requisições (rate limit) — `generalLimiter` global (600/15min por IP) e `authLimiter` em `/session` (20/15min por IP + e-mail) |
 | `500` | Erro inesperado do servidor |
 | `502` | Falha ao integrar com serviço externo (upload Cloudinary) |
 
