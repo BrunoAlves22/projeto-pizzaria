@@ -10,9 +10,9 @@ import {
 
 interface AuthCardProps {
   description: string;
-  footerText: string;
-  footerLinkHref: string;
-  footerLinkText: string;
+  footerText?: string;
+  footerLinkHref?: string;
+  footerLinkText?: string;
   children: React.ReactNode;
 }
 
@@ -23,6 +23,8 @@ export function AuthCard({
   footerLinkText,
   children,
 }: AuthCardProps) {
+  const hasFooter = footerText && footerLinkHref && footerLinkText;
+
   return (
     <div className="w-full max-w-md">
       <Card className="border border-border bg-card shadow-lg shadow-amber-950/5">
@@ -36,15 +38,17 @@ export function AuthCard({
 
         <CardContent>{children}</CardContent>
 
-        <CardFooter className="justify-center gap-1 bg-muted/40 text-sm text-muted-foreground">
-          {footerText}
-          <Link
-            href={footerLinkHref}
-            className="font-medium text-amber-600 hover:underline dark:text-amber-400"
-          >
-            {footerLinkText}
-          </Link>
-        </CardFooter>
+        {hasFooter && (
+          <CardFooter className="justify-center gap-1 bg-muted/40 text-sm text-muted-foreground">
+            {footerText}
+            <Link
+              href={footerLinkHref}
+              className="font-medium text-amber-600 hover:underline dark:text-amber-400"
+            >
+              {footerLinkText}
+            </Link>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ApiError } from "@/lib/api-error";
 import { fetchApi } from "@/lib/api";
-import { getToken } from "@/lib/auth";
+import { assertAdmin, getToken } from "@/lib/auth";
 import type { Order } from "@/lib/types";
 
 export type OrdersResult = {
@@ -44,6 +44,7 @@ export async function fetchOrders(): Promise<OrdersResult> {
 }
 
 export async function finishOrder(orderId: string): Promise<void> {
+  await assertAdmin();
   const token = await getToken();
 
   try {
@@ -64,6 +65,7 @@ export async function finishOrder(orderId: string): Promise<void> {
 }
 
 export async function cancelOrder(orderId: string): Promise<void> {
+  await assertAdmin();
   const token = await getToken();
 
   try {

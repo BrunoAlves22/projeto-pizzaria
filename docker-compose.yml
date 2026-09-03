@@ -29,7 +29,12 @@ services:
       - /app/node_modules
     command: sh -c "npx prisma migrate deploy && npm run dev"
   frontend:
-    build: ./frontend
+    # Em dev usamos só o estágio `deps` (node_modules) + bind mount do código +
+    # `npm run dev`. A imagem de produção é o build multi-stage completo do
+    # Dockerfile (docker build ./frontend).
+    build:
+      context: ./frontend
+      target: deps
     container_name: pizzaria_frontend
     env_file:
       - "./frontend/.env"
