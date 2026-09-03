@@ -11,9 +11,27 @@ validateEnv();
 
 const app = express();
 
+// Atrás de um reverse proxy/load balancer o IP do cliente vem em
+// X-Forwarded-For. Só confiar nele quando TRUST_PROXY estiver definido, com o
+// número de saltos correto — confiar cegamente permitiria spoofing de IP e
+// burlaria o rate limiting.
+const trustProxy = process.env.TRUST_PROXY;
+if (trustProxy) {
+  app.set(
+    "trust proxy",
+    /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === "true",
+  );
+}
+
 const allowedOrigins = process.env.CORS_ORIGIN?.split(",").map((origin) =>
   origin.trim(),
 );
+
+if (!allowedOrigins) {
+  console.warn(
+    "[CORS] CORS_ORIGIN não definida — a API vai refletir a origem de qualquer requisição. Defina CORS_ORIGIN em produção.",
+  );
+}
 
 app.use(helmet());
 app.use(
@@ -22,7 +40,7 @@ app.use(
   }),
 );
 app.use(generalLimiter);
-app.use(express.json());
+app.use(express.json({ limit: "10kb" }));
 app.use(router);
 app.use(errorHandler);
 

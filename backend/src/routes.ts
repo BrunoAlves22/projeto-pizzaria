@@ -55,9 +55,13 @@ const router = Router();
 const upload = multer(uploadConfig);
 
 // User routes
+// Criação de usuários é restrita a ADMIN (o gerente provisiona as contas dos
+// atendentes). O primeiro ADMIN é criado pelo seed (prisma/seed.ts).
 router.post(
   "/users",
-  authLimiter,
+  isAuthenticated,
+  isAdmin,
+  auditLog,
   validateSchema(createUserSchema),
   new CreateUserController().handle,
 );
@@ -179,6 +183,7 @@ router.get(
 router.put(
   "/order/send",
   isAuthenticated,
+  auditLog,
   validateSchema(sendOrderSchema),
   new SendOrderController().handle,
 );
@@ -186,6 +191,7 @@ router.put(
 router.put(
   "/order/finish",
   isAuthenticated,
+  auditLog,
   validateSchema(finishOrderSchema),
   new FinishOrderController().handle,
 );
@@ -193,6 +199,7 @@ router.put(
 router.delete(
   "/order/delete",
   isAuthenticated,
+  auditLog,
   validateSchema(deleteOrderSchema),
   new DeleteOrderController().handle,
 );

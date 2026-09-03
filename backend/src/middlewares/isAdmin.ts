@@ -13,6 +13,7 @@ const isAdmin = async (req: Request, res: Response, next: NextFunction) => {
       where: {
         id: user_id,
       },
+      select: { role: true },
     });
 
     if (!user || user.role !== "ADMIN") {

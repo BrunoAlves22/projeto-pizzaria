@@ -10,6 +10,10 @@ const createUserSchema = z.object({
       .regex(/[a-z]/, { error: "Senha deve conter ao menos uma letra minúscula" })
       .regex(/[A-Z]/, { error: "Senha deve conter ao menos uma letra maiúscula" })
       .regex(/[0-9]/, { error: "Senha deve conter ao menos um número" }),
+    // Rota é restrita a ADMIN; o admin pode criar STAFF (padrão) ou outro ADMIN.
+    role: z
+      .enum(["STAFF", "ADMIN"], { error: "Cargo inválido" })
+      .optional(),
   }),
 });
 

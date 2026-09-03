@@ -5,8 +5,12 @@ export const createOrderSchema = z.object({
     table: z
       .number({ error: "O número da mesa é obrigatório" })
       .int({ error: "O número da mesa deve ser um número inteiro" })
-      .positive({ error: "O número da mesa deve ser positivo" }),
-    name: z.string().min(1, { error: "O nome do cliente é obrigatório" }),
+      .positive({ error: "O número da mesa deve ser positivo" })
+      .max(999, { error: "Número da mesa inválido" }),
+    name: z
+      .string()
+      .min(1, { error: "O nome do cliente é obrigatório" })
+      .max(120, { error: "Nome muito longo" }),
   }),
 });
 
