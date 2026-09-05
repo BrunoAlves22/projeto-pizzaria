@@ -2,6 +2,7 @@
 
 > Documento de contexto de **todo o sistema** (backend + dashboard web + app mobile do garçom).
 > O contexto detalhado do backend está em [`backend/PROJECT_CONTEXT.md`](backend/PROJECT_CONTEXT.md).
+> O contexto detalhado do frontend está em [`frontend/PROJECT_CONTEXT.md`](frontend/PROJECT_CONTEXT.md).
 > O guia para construir o app do garçom está em [`mobile/README.md`](mobile/README.md).
 
 ---
