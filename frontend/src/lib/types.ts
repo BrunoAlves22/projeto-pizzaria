@@ -5,7 +5,8 @@ export interface User {
   role: "ADMIN" | "STAFF";
 }
 
-export interface RegisterUser extends User {
+/** Usuário como retornado por `GET /users` e `POST /users` (sem senha/token). */
+export interface AccountUser extends User {
   createdAt: string;
 }
 
