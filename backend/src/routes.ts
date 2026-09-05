@@ -3,6 +3,7 @@ import multer from "multer";
 import uploadConfig from "./config/multer";
 import { authLimiter } from "./config/rateLimit";
 import { CreateUserController } from "./controllers/user/CreateUserController";
+import { ListUserController } from "./controllers/user/ListUserController";
 import { validateSchema } from "./middlewares/validateSchema";
 import { authUserSchema, createUserSchema } from "./schemas/userSchema";
 import { AuthUserController } from "./controllers/user/AuthUserController";
@@ -65,6 +66,7 @@ router.post(
   validateSchema(createUserSchema),
   new CreateUserController().handle,
 );
+router.get("/users", isAuthenticated, isAdmin, new ListUserController().handle);
 router.post(
   "/session",
   authLimiter,
