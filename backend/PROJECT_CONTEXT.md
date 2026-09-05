@@ -90,11 +90,13 @@ backend/
     ├── controllers/
     │   ├── user/
     │   │   ├── CreateUserController.ts
+    │   │   ├── ListUserController.ts
     │   │   ├── AuthUserController.ts
     │   │   ├── DetailUserController.ts
     │   │   ├── LogoutController.ts
     │   │   └── __tests__/
     │   │       ├── CreateUserController.spec.ts
+    │   │       ├── ListUserController.spec.ts
     │   │       ├── AuthUserController.spec.ts
     │   │       ├── DetailUserController.spec.ts
     │   │       └── LogoutController.spec.ts
@@ -135,11 +137,13 @@ backend/
     ├── services/
     │   ├── user/
     │   │   ├── CreateUserService.ts
+    │   │   ├── ListUserService.ts
     │   │   ├── AuthUserService.ts
     │   │   ├── DetailUserService.ts
     │   │   ├── LogoutService.ts
     │   │   └── __tests__/
     │   │       ├── CreateUserService.spec.ts
+    │   │       ├── ListUserService.spec.ts
     │   │       ├── AuthUserService.spec.ts
     │   │       ├── DetailUserService.spec.ts
     │   │       └── LogoutService.spec.ts
@@ -432,6 +436,7 @@ Relação: `Order 1 ── N OrderItem`
 | Método | Rota | Auth? | Admin? | Schema |
 |---|---|---|---|---|
 | `POST` | `/users` | Sim | Sim | `createUserSchema` |
+| `GET` | `/users` | Sim | Sim | — |
 | `POST` | `/session` | Não | Não | `authUserSchema` |
 | `GET` | `/me` | Sim | Não | — |
 | `POST` | `/logout` | Sim | Não | — |
@@ -495,6 +500,34 @@ Senha: mínimo 8 caracteres, ao menos 1 maiúscula, 1 minúscula e 1 número.
 - `401` — não autenticado
 - `403` — usuário não é ADMIN
 - `409` — e-mail já cadastrado
+
+---
+
+### `GET /users` — Listar usuários
+
+**Middlewares:** `isAuthenticated` → `isAdmin`
+**Header:** `Authorization: Bearer <token>` (role `ADMIN`)
+
+Lista todas as contas para a tela **Usuários** do dashboard. O `ListUserService`
+usa `select` explícito (nunca retorna `password` nem `tokenVersion`) e ordena por
+`createdAt` desc.
+
+**Resposta 200:**
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Bruno Alves",
+    "email": "bruno@email.com",
+    "role": "ADMIN",
+    "createdAt": "2024-01-01T00:00:00.000Z"
+  }
+]
+```
+
+**Erros:**
+- `401` — não autenticado
+- `403` — usuário não é ADMIN
 
 ---
 
@@ -1502,6 +1535,7 @@ src/**/*.ts
 | Módulo | Cenários testados |
 |---|---|
 | `CreateUserController` | 201 criado, 409 duplicado, 500 erro inesperado |
+| `ListUserController` | 200 com lista, 200 lista vazia, 500 erro inesperado |
 | `AuthUserController` | 200 autenticado, 401 inválido, 500 erro inesperado |
 | `DetailUserController` | 200 encontrado, 404 não encontrado, 500 erro inesperado |
 | `LogoutController` | 200 sessões encerradas, chama service com id correto, 500 erro inesperado |
@@ -1519,7 +1553,8 @@ src/**/*.ts
 | `SendOrderController` | 200 pedido enviado, 404 pedido não encontrado, 500 erro inesperado |
 | `FinishOrderController` | 200 pedido finalizado, 404 pedido não encontrado, 500 erro inesperado |
 | `DeleteOrderController` | 200 pedido deletado, 404 pedido não encontrado, 500 erro inesperado |
-| `CreateUserService` | cria usuário, rejeita duplicado, hash da senha |
+| `CreateUserService` | cria usuário, rejeita duplicado, hash da senha, omite `role` quando ausente, encaminha `role` quando informado |
+| `ListUserService` | lista usuários, `select` sem campos sensíveis + ordenação `createdAt` desc, lista vazia, propaga erro do Prisma |
 | `AuthUserService` | retorna token, rejeita e-mail inválido, rejeita senha inválida |
 | `DetailUserService` | retorna usuário, lança 404 se não encontrar |
 | `LogoutService` | incrementa `tokenVersion`, retorna mensagem de sucesso, propaga erros do Prisma |
@@ -1609,13 +1644,13 @@ Exportado como singleton e importado diretamente nos Services e no middleware `i
 
 ## Segurança
 
-Revisão inicial em 2026-08-04. **2ª rodada em 2026-09** (itens marcados 🆕). Todos os itens abaixo estão implementados; suíte de testes 178/178.
+Revisão inicial em 2026-08-04. **2ª rodada em 2026-09** (itens marcados 🆕). Todos os itens abaixo estão implementados; suíte de testes 187/187.
 
 ### Implementado
 
 | Área | Medida | Onde |
 |---|---|---|
-| 🆕 Cadastro restrito | `POST /users` exige `ADMIN` (`isAuthenticated` → `isAdmin` → `auditLog`); antes era público. 1º ADMIN via seed | [routes.ts](src/routes.ts), [prisma/seed.ts](prisma/seed.ts) |
+| 🆕 Cadastro restrito | `POST /users` e `GET /users` exigem `ADMIN` (antes o cadastro era público). 1º ADMIN via seed; contas seguintes pela tela **Usuários** do dashboard | [routes.ts](src/routes.ts), [prisma/seed.ts](prisma/seed.ts), [ListUserController.ts](src/controllers/user/ListUserController.ts) |
 | Rate limiting | `generalLimiter` (600 req/15min, todas as rotas) + `authLimiter` em `/session`: 🆕 chave **IP + e-mail**, `skipSuccessfulRequests`, 20/15min — não trava a loja inteira atrás de um NAT | [src/config/rateLimit.ts](src/config/rateLimit.ts) |
 | 🆕 Auditoria de pedidos | `auditLog` também em `PUT /order/send`, `PUT /order/finish`, `DELETE /order/delete` | [routes.ts](src/routes.ts) |
 | 🆕 `trust proxy` configurável | `TRUST_PROXY` (`true` / nº de saltos) aplicado no startup; validado no env | [src/server.ts](src/server.ts), [src/config/env.ts](src/config/env.ts) |

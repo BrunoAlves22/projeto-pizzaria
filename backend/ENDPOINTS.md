@@ -20,6 +20,7 @@ Authorization: Bearer <token>
 | Método | Rota | Auth | Admin | Schema |
 |---|---|---|---|---|
 | `POST` | `/users` | Sim | Sim | `createUserSchema` |
+| `GET` | `/users` | Sim | Sim | — |
 | `POST` | `/session` | Não | Não | `authUserSchema` |
 | `GET` | `/me` | Sim | Não | — |
 | `POST` | `/logout` | Sim | Não | — |
@@ -74,6 +75,30 @@ Senha deve ter no mínimo 8 caracteres, com ao menos uma letra maiúscula, uma m
 ```
 
 **Erros:** `400` validação falhou · `401` não autenticado · `403` não é ADMIN · `409` e-mail já cadastrado
+
+---
+
+### `GET /users` — Listar usuários
+
+**Middlewares:** `isAuthenticated` → `isAdmin`
+**Header:** `Authorization: Bearer <token>` (role `ADMIN`)
+
+Usada pela tela **Usuários** do dashboard. `select` explícito — nunca retorna `password`/`tokenVersion`. Ordena por `createdAt` desc.
+
+**Resposta 200:**
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Bruno Alves",
+    "email": "bruno@email.com",
+    "role": "ADMIN",
+    "createdAt": "2024-01-01T00:00:00.000Z"
+  }
+]
+```
+
+**Erros:** `401` não autenticado · `403` não é ADMIN
 
 ---
 
