@@ -3,6 +3,7 @@ import { listUsers } from "@/actions/user";
 import { getUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { CreateUserDialog } from "@/components/dashboard/users/create-user-dialog";
+import { UserRowActions } from "@/components/dashboard/users/user-row-actions";
 import {
   Table,
   TableBody,
@@ -89,6 +90,9 @@ export default async function UsersPage() {
                 <TableHead className="h-11 text-right text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                   Criado em
                 </TableHead>
+                <TableHead className="h-11 w-16 text-right text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                  Ações
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -110,6 +114,12 @@ export default async function UsersPage() {
                   </TableCell>
                   <TableCell className="text-right text-muted-foreground">
                     {formatDate(user.createdAt)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <UserRowActions
+                      user={user}
+                      isSelf={currentUser?.id === user.id}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

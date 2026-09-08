@@ -96,3 +96,23 @@ export async function createUser(
   revalidatePath("/dashboard/users");
   return { success: true, error: "" };
 }
+
+export async function deleteUser(userId: string) {
+  await assertAdmin();
+  const token = await getToken();
+
+  try {
+    await fetchApi(`/users?user_id=${encodeURIComponent(userId)}`, {
+      method: "DELETE",
+      token,
+    });
+  } catch (err) {
+    const message =
+      err instanceof ApiError
+        ? err.message
+        : "Não foi possível excluir o usuário.";
+    throw new Error(message);
+  }
+
+  revalidatePath("/dashboard/users");
+}
