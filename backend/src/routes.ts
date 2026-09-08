@@ -4,8 +4,13 @@ import uploadConfig from "./config/multer";
 import { authLimiter } from "./config/rateLimit";
 import { CreateUserController } from "./controllers/user/CreateUserController";
 import { ListUserController } from "./controllers/user/ListUserController";
+import { DeleteUserController } from "./controllers/user/DeleteUserController";
 import { validateSchema } from "./middlewares/validateSchema";
-import { authUserSchema, createUserSchema } from "./schemas/userSchema";
+import {
+  authUserSchema,
+  createUserSchema,
+  deleteUserSchema,
+} from "./schemas/userSchema";
 import { AuthUserController } from "./controllers/user/AuthUserController";
 import { DetailUserController } from "./controllers/user/DetailUserController";
 import { LogoutController } from "./controllers/user/LogoutController";
@@ -67,6 +72,14 @@ router.post(
   new CreateUserController().handle,
 );
 router.get("/users", isAuthenticated, isAdmin, new ListUserController().handle);
+router.delete(
+  "/users",
+  isAuthenticated,
+  isAdmin,
+  auditLog,
+  validateSchema(deleteUserSchema),
+  new DeleteUserController().handle,
+);
 router.post(
   "/session",
   authLimiter,

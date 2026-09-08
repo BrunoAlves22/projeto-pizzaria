@@ -27,3 +27,11 @@ const authUserSchema = z.object({
 });
 
 export { authUserSchema };
+
+const deleteUserSchema = z.object({
+  query: z.object({
+    user_id: z.string().min(1, { error: "O ID do usuário é obrigatório" }),
+  }),
+});
+
+export { deleteUserSchema };
