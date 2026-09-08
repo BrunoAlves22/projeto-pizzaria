@@ -93,4 +93,46 @@ describe("CreateUserService", () => {
 
     expect(hashMock).toHaveBeenCalledWith("123456", 12);
   });
+
+  it("não deve enviar role ao prisma quando não informado (usa o default STAFF)", async () => {
+    findFirstMock.mockResolvedValue(null);
+    hashMock.mockResolvedValue("hashed_password" as never);
+    createMock.mockResolvedValue({ name: "Bruno" } as never);
+
+    await service.execute({
+      name: "Bruno",
+      email: "bruno@email.com",
+      password: "123456",
+    });
+
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { name: "Bruno", email: "bruno@email.com", password: "hashed_password" },
+      }),
+    );
+  });
+
+  it("deve encaminhar role ao prisma quando informado", async () => {
+    findFirstMock.mockResolvedValue(null);
+    hashMock.mockResolvedValue("hashed_password" as never);
+    createMock.mockResolvedValue({ name: "Chefe" } as never);
+
+    await service.execute({
+      name: "Chefe",
+      email: "chefe@email.com",
+      password: "Senha123",
+      role: "ADMIN",
+    });
+
+    expect(createMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          name: "Chefe",
+          email: "chefe@email.com",
+          password: "hashed_password",
+          role: "ADMIN",
+        },
+      }),
+    );
+  });
 });

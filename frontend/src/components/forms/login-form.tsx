@@ -28,12 +28,7 @@ export function LoginForm() {
   }, [state, router]);
 
   return (
-    <AuthCard
-      description="Entre na sua conta para fazer seus pedidos"
-      footerText="Ainda não tem uma conta?"
-      footerLinkHref="/register"
-      footerLinkText="Criar conta"
-    >
+    <AuthCard description="Entre com a conta fornecida pelo gerente">
       <form action={formAction} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="email">Email</Label>
@@ -78,6 +73,7 @@ export function LoginForm() {
 
         <Button
           type="submit"
+          disabled={isPending}
           className="mt-2 w-full bg-amber-500 text-white hover:bg-amber-600 focus-visible:ring-amber-500/40 dark:bg-amber-600 dark:hover:bg-amber-500 cursor-pointer transition-colors duration-200 ease-in-out focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           {isPending ? "Entrando..." : "Entrar"}

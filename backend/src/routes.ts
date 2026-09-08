@@ -3,8 +3,14 @@ import multer from "multer";
 import uploadConfig from "./config/multer";
 import { authLimiter } from "./config/rateLimit";
 import { CreateUserController } from "./controllers/user/CreateUserController";
+import { ListUserController } from "./controllers/user/ListUserController";
+import { DeleteUserController } from "./controllers/user/DeleteUserController";
 import { validateSchema } from "./middlewares/validateSchema";
-import { authUserSchema, createUserSchema } from "./schemas/userSchema";
+import {
+  authUserSchema,
+  createUserSchema,
+  deleteUserSchema,
+} from "./schemas/userSchema";
 import { AuthUserController } from "./controllers/user/AuthUserController";
 import { DetailUserController } from "./controllers/user/DetailUserController";
 import { LogoutController } from "./controllers/user/LogoutController";
@@ -55,11 +61,24 @@ const router = Router();
 const upload = multer(uploadConfig);
 
 // User routes
+// Criação de usuários é restrita a ADMIN (o gerente provisiona as contas dos
+// atendentes). O primeiro ADMIN é criado pelo seed (prisma/seed.ts).
 router.post(
   "/users",
-  authLimiter,
+  isAuthenticated,
+  isAdmin,
+  auditLog,
   validateSchema(createUserSchema),
   new CreateUserController().handle,
+);
+router.get("/users", isAuthenticated, isAdmin, new ListUserController().handle);
+router.delete(
+  "/users",
+  isAuthenticated,
+  isAdmin,
+  auditLog,
+  validateSchema(deleteUserSchema),
+  new DeleteUserController().handle,
 );
 router.post(
   "/session",
@@ -179,6 +198,7 @@ router.get(
 router.put(
   "/order/send",
   isAuthenticated,
+  auditLog,
   validateSchema(sendOrderSchema),
   new SendOrderController().handle,
 );
@@ -186,6 +206,7 @@ router.put(
 router.put(
   "/order/finish",
   isAuthenticated,
+  auditLog,
   validateSchema(finishOrderSchema),
   new FinishOrderController().handle,
 );
@@ -193,6 +214,7 @@ router.put(
 router.delete(
   "/order/delete",
   isAuthenticated,
+  auditLog,
   validateSchema(deleteOrderSchema),
   new DeleteOrderController().handle,
 );

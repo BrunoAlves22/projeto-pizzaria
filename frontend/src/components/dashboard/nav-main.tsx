@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, Tags, type LucideIcon } from "lucide-react";
+import {
+  LayoutDashboard,
+  Package,
+  Tags,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -24,6 +30,10 @@ const generalItems: NavItem[] = [
 const cardapioItems: NavItem[] = [
   { title: "Categorias", url: "/dashboard/categories", icon: Tags },
   { title: "Produtos", url: "/dashboard/products", icon: Package },
+];
+
+const adminItems: NavItem[] = [
+  { title: "Usuários", url: "/dashboard/users", icon: Users },
 ];
 
 function isItemActive(pathname: string, url: string) {
@@ -60,6 +70,7 @@ export function NavMain() {
     <>
       <NavGroup label="Geral" items={generalItems} />
       <NavGroup label="Cardápio" items={cardapioItems} />
+      <NavGroup label="Administração" items={adminItems} />
     </>
   );
 }

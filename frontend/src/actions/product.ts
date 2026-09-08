@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ApiError } from "@/lib/api-error";
 import { fetchApi } from "@/lib/api";
-import { getToken } from "@/lib/auth";
+import { assertAdmin, getToken } from "@/lib/auth";
 import { Product } from "@/lib/types";
 
 type ProductState = {
@@ -15,6 +15,7 @@ export async function createProduct(
   prevState: ProductState | null,
   formData: FormData,
 ): Promise<ProductState> {
+  await assertAdmin();
   const token = await getToken();
 
   const name = (formData.get("name") as string) ?? "";
@@ -88,6 +89,7 @@ export async function createProduct(
 }
 
 export async function archiveProduct(productId: string) {
+  await assertAdmin();
   const token = await getToken();
 
   try {
@@ -107,6 +109,7 @@ export async function archiveProduct(productId: string) {
 }
 
 export async function deleteProduct(productId: string) {
+  await assertAdmin();
   const token = await getToken();
 
   try {

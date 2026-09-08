@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ApiError } from "@/lib/api-error";
 import { fetchApi } from "@/lib/api";
-import { getToken } from "@/lib/auth";
+import { assertAdmin, getToken } from "@/lib/auth";
 import { Category } from "@/lib/types";
 
 type CategoryState = {
@@ -15,6 +15,7 @@ export async function createCategory(
   prevState: CategoryState | null,
   formData: FormData,
 ): Promise<CategoryState> {
+  await assertAdmin();
   const name = formData.get("name") as string;
   const token = await getToken();
 
@@ -54,6 +55,7 @@ export async function createCategory(
 }
 
 export async function deleteCategory(categoryId: string) {
+  await assertAdmin();
   const token = await getToken();
 
   try {
@@ -76,6 +78,7 @@ export async function moveCategoryProducts(
   categoryId: string,
   targetCategoryId: string,
 ) {
+  await assertAdmin();
   const token = await getToken();
 
   try {

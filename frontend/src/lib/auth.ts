@@ -12,7 +12,9 @@ export async function setToken(token: string) {
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
-    maxAge: 60 * 60 * 24 * 7, // 7 days
+    // Alinhado ao `expiresIn: "1d"` do JWT no backend — evita manter um cookie
+    // válido dias depois do token já ter expirado.
+    maxAge: 60 * 60 * 24, // 1 dia
     path: COOKIE_PATH,
     sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
@@ -58,6 +60,20 @@ export async function requiredAdminUser(): Promise<User> {
   }
   if (user?.role !== "ADMIN") {
     redirect("/access-denied");
+  }
+  return user;
+}
+
+/**
+ * Guarda de autorização para Server Actions.
+ * O `proxy.ts` já protege a navegação para `/dashboard`, mas Server Actions são
+ * endpoints POST próprios — a doc do Next recomenda revalidar a permissão dentro
+ * de cada uma. Lança em vez de redirecionar (redirect em action não é confiável).
+ */
+export async function assertAdmin(): Promise<User> {
+  const user = await getUser();
+  if (!user || user.role !== "ADMIN") {
+    throw new Error("Ação não autorizada.");
   }
   return user;
 }

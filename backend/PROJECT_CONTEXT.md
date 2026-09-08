@@ -90,11 +90,15 @@ backend/
     ├── controllers/
     │   ├── user/
     │   │   ├── CreateUserController.ts
+    │   │   ├── ListUserController.ts
+    │   │   ├── DeleteUserController.ts
     │   │   ├── AuthUserController.ts
     │   │   ├── DetailUserController.ts
     │   │   ├── LogoutController.ts
     │   │   └── __tests__/
     │   │       ├── CreateUserController.spec.ts
+    │   │       ├── ListUserController.spec.ts
+    │   │       ├── DeleteUserController.spec.ts
     │   │       ├── AuthUserController.spec.ts
     │   │       ├── DetailUserController.spec.ts
     │   │       └── LogoutController.spec.ts
@@ -135,11 +139,15 @@ backend/
     ├── services/
     │   ├── user/
     │   │   ├── CreateUserService.ts
+    │   │   ├── ListUserService.ts
+    │   │   ├── DeleteUserService.ts
     │   │   ├── AuthUserService.ts
     │   │   ├── DetailUserService.ts
     │   │   ├── LogoutService.ts
     │   │   └── __tests__/
     │   │       ├── CreateUserService.spec.ts
+    │   │       ├── ListUserService.spec.ts
+    │   │       ├── DeleteUserService.spec.ts
     │   │       ├── AuthUserService.spec.ts
     │   │       ├── DetailUserService.spec.ts
     │   │       └── LogoutService.spec.ts
@@ -431,7 +439,9 @@ Relação: `Order 1 ── N OrderItem`
 
 | Método | Rota | Auth? | Admin? | Schema |
 |---|---|---|---|---|
-| `POST` | `/users` | Não | Não | `createUserSchema` |
+| `POST` | `/users` | Sim | Sim | `createUserSchema` |
+| `GET` | `/users` | Sim | Sim | — |
+| `DELETE` | `/users` | Sim | Sim | `deleteUserSchema` |
 | `POST` | `/session` | Não | Não | `authUserSchema` |
 | `GET` | `/me` | Sim | Não | — |
 | `POST` | `/logout` | Sim | Não | — |
@@ -451,26 +461,33 @@ Relação: `Order 1 ── N OrderItem`
 | `PUT` | `/order/finish` | Sim | Não | `finishOrderSchema` |
 | `DELETE` | `/order/delete` | Sim | Não | `deleteOrderSchema` |
 
-> As rotas de pedido não exigem role `ADMIN` — qualquer usuário autenticado (`isAuthenticated`) pode criar, listar, editar itens, enviar para a cozinha, finalizar ou deletar pedidos.
+> As rotas de pedido não exigem role `ADMIN` — qualquer usuário autenticado (`isAuthenticated`) pode criar, listar, editar itens, enviar para a cozinha, finalizar ou deletar pedidos. As mutações (`/order/send`, `/order/finish`, `/order/delete`) passam pelo `auditLog`.
 
-> `/users` e `/session` têm rate limit dedicado (`authLimiter` — 10 requisições / 15 min por IP); todas as rotas têm rate limit geral (`generalLimiter` — 300 requisições / 15 min por IP). Ver [Segurança](#segurança).
+> `/users` é restrita a `ADMIN` (`isAuthenticated` → `isAdmin` → `auditLog`) — o primeiro admin é criado pelo seed (`prisma/seed.ts`). `/session` tem rate limit dedicado (`authLimiter` — 20 tentativas / 15 min por **IP + e-mail**, ignorando logins bem-sucedidos); todas as rotas têm rate limit geral (`generalLimiter` — 600 requisições / 15 min por IP). Ver [Segurança](#segurança).
 
 ---
 
 ### `POST /users` — Criar usuário
 
-**Middlewares:** `authLimiter` → `validateSchema(createUserSchema)`
+**Middlewares:** `isAuthenticated` → `isAdmin` → `auditLog` → `validateSchema(createUserSchema)`
+**Header:** `Authorization: Bearer <token>` (usuário com role `ADMIN`)
+
+Rota restrita: só um `ADMIN` cria contas (provisiona os atendentes). O primeiro
+`ADMIN` é criado fora da API, pelo seed `prisma/seed.ts` (`npx prisma db seed`,
+lendo `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` do `.env`).
 
 **Body:**
 ```json
 {
   "name": "João Silva",
   "email": "joao@email.com",
-  "password": "Senha123"
+  "password": "Senha123",
+  "role": "STAFF"
 }
 ```
 
 Senha: mínimo 8 caracteres, ao menos 1 maiúscula, 1 minúscula e 1 número.
+`role` é opcional (`"STAFF"` — padrão — ou `"ADMIN"`).
 
 **Resposta 201:**
 ```json
@@ -485,14 +502,73 @@ Senha: mínimo 8 caracteres, ao menos 1 maiúscula, 1 minúscula e 1 número.
 
 **Erros:**
 - `400` — validação falhou (campos inválidos)
+- `401` — não autenticado
+- `403` — usuário não é ADMIN
 - `409` — e-mail já cadastrado
-- `429` — muitas requisições (rate limit de `authLimiter`)
+
+---
+
+### `GET /users` — Listar usuários
+
+**Middlewares:** `isAuthenticated` → `isAdmin`
+**Header:** `Authorization: Bearer <token>` (role `ADMIN`)
+
+Lista todas as contas para a tela **Usuários** do dashboard. O `ListUserService`
+usa `select` explícito (nunca retorna `password` nem `tokenVersion`) e ordena por
+`createdAt` desc.
+
+**Resposta 200:**
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Bruno Alves",
+    "email": "bruno@email.com",
+    "role": "ADMIN",
+    "createdAt": "2024-01-01T00:00:00.000Z"
+  }
+]
+```
+
+**Erros:**
+- `401` — não autenticado
+- `403` — usuário não é ADMIN
+
+---
+
+### `DELETE /users` — Excluir usuário
+
+**Middlewares:** `isAuthenticated` → `isAdmin` → `auditLog` → `validateSchema(deleteUserSchema)`
+**Header:** `Authorization: Bearer <token>` (role `ADMIN`)
+
+**Query params:**
+```
+user_id: string   (obrigatório)
+```
+
+**Fluxo (`DeleteUserService`):** recebe `userId` (query) e `requesterId` (`req.user_id`).
+1. Se `userId === requesterId` → `AppError("Você não pode excluir a própria conta", 400)`.
+2. Busca o usuário (`select: { id, role }`); se não existir → `AppError("Usuário não encontrado", 404)`.
+3. Se o alvo é `ADMIN`, conta quantos `ADMIN` existem; se for o único → `AppError("Não é possível excluir o último administrador", 409)`.
+4. `prisma.user.delete`. O JWT do usuário excluído para de valer na requisição seguinte (o `isAuthenticated` responde `401` quando o `findFirst` pelo `sub` não acha ninguém).
+
+**Resposta 200:**
+```json
+{ "message": "Usuário excluído com sucesso" }
+```
+
+**Erros:**
+- `400` — tentativa de excluir a própria conta (ou `user_id` ausente)
+- `401` — não autenticado
+- `403` — usuário não é ADMIN
+- `404` — usuário não encontrado
+- `409` — é o último administrador
 
 ---
 
 ### `POST /session` — Autenticar usuário
 
-**Middlewares:** `authLimiter` → `validateSchema(authUserSchema)`
+**Middlewares:** `authLimiter` (chave IP + e-mail, ignora sucessos) → `validateSchema(authUserSchema)`
 
 **Body:**
 ```json
@@ -516,7 +592,7 @@ Senha: mínimo 8 caracteres, ao menos 1 maiúscula, 1 minúscula e 1 número.
 **Erros:**
 - `400` — validação falhou
 - `401` — e-mail ou senha incorretos
-- `429` — muitas requisições (rate limit de `authLimiter`)
+- `429` — muitas tentativas para o mesmo IP + e-mail (rate limit de `authLimiter`)
 
 ---
 
@@ -1131,7 +1207,7 @@ schema.parseAsync({ body, query, params })
 
 **Arquivo:** [src/middlewares/auditLog.ts](src/middlewares/auditLog.ts)
 
-Aplicado após `isAdmin` nas rotas administrativas (`POST /category`, `POST /product`, `PATCH /product`, `DELETE /product`). No evento `finish` da response, loga uma linha JSON estruturada no stdout com `userId`, `method`, `path` e `statusCode` — não loga corpo da requisição nem dados sensíveis.
+Aplicado nas rotas administrativas (`POST /users`, `POST /category`, `DELETE /category`, `PATCH /category/products`, `POST /product`, `PATCH /product`, `DELETE /product`) e nas mutações de pedido (`PUT /order/send`, `PUT /order/finish`, `DELETE /order/delete`). No evento `finish` da response, loga uma linha JSON estruturada no stdout com `userId`, `method`, `path` e `statusCode` — não loga corpo da requisição nem dados sensíveis.
 
 ```json
 {"type":"audit","timestamp":"...","userId":"uuid","method":"POST","path":"/category","statusCode":201}
@@ -1424,7 +1500,7 @@ Usada nos Services para erros de negócio previsíveis. O `errorHandler` captura
 | `403` | Autenticado mas sem permissão (não é ADMIN) |
 | `404` | Recurso não encontrado |
 | `409` | Conflito (e-mail já existe) |
-| `429` | Rate limit excedido (`generalLimiter` global ou `authLimiter` em `/session` e `/users`) |
+| `429` | Rate limit excedido (`generalLimiter` global, ou `authLimiter` por IP + e-mail em `/session`) |
 | `500` | Erro inesperado do servidor |
 | `502` | Falha ao integrar com serviço externo (upload de imagem no Cloudinary) |
 
@@ -1494,6 +1570,8 @@ src/**/*.ts
 | Módulo | Cenários testados |
 |---|---|
 | `CreateUserController` | 201 criado, 409 duplicado, 500 erro inesperado |
+| `ListUserController` | 200 com lista, 200 lista vazia, 500 erro inesperado |
+| `DeleteUserController` | 200 sucesso, passa `userId` + `requesterId` corretos, 400 autoexclusão, 404 não encontrado, 409 último admin, 500 erro inesperado |
 | `AuthUserController` | 200 autenticado, 401 inválido, 500 erro inesperado |
 | `DetailUserController` | 200 encontrado, 404 não encontrado, 500 erro inesperado |
 | `LogoutController` | 200 sessões encerradas, chama service com id correto, 500 erro inesperado |
@@ -1511,7 +1589,9 @@ src/**/*.ts
 | `SendOrderController` | 200 pedido enviado, 404 pedido não encontrado, 500 erro inesperado |
 | `FinishOrderController` | 200 pedido finalizado, 404 pedido não encontrado, 500 erro inesperado |
 | `DeleteOrderController` | 200 pedido deletado, 404 pedido não encontrado, 500 erro inesperado |
-| `CreateUserService` | cria usuário, rejeita duplicado, hash da senha |
+| `CreateUserService` | cria usuário, rejeita duplicado, hash da senha, omite `role` quando ausente, encaminha `role` quando informado |
+| `ListUserService` | lista usuários, `select` sem campos sensíveis + ordenação `createdAt` desc, lista vazia, propaga erro do Prisma |
+| `DeleteUserService` | exclui STAFF, bloqueia autoexclusão (400), 404 se não existe, bloqueia último admin (409), exclui admin quando há outros, propaga erro do Prisma |
 | `AuthUserService` | retorna token, rejeita e-mail inválido, rejeita senha inválida |
 | `DetailUserService` | retorna usuário, lança 404 se não encontrar |
 | `LogoutService` | incrementa `tokenVersion`, retorna mensagem de sucesso, propaga erros do Prisma |
@@ -1547,9 +1627,17 @@ src/**/*.ts
 | `CLOUDINARY_CLOUD_NAME` | — | Nome da conta Cloudinary (upload de imagens de produto) |
 | `CLOUDINARY_API_KEY` | — | API key do Cloudinary |
 | `CLOUDINARY_API_SECRET` | — | API secret do Cloudinary |
-| `CORS_ORIGIN` | — (permissivo se ausente) | Lista de origens permitidas separadas por vírgula. Sem essa variável, a API reflete a origem da requisição (`origin: true`) — adequado apenas para desenvolvimento; definir em produção assim que o domínio do frontend existir |
+| `CORS_ORIGIN` | — (permissivo se ausente) | Lista de origens permitidas separadas por vírgula. Sem essa variável, a API reflete a origem da requisição (`origin: true`) e emite um `console.warn` no startup — adequado apenas para desenvolvimento; definir em produção |
+| `TRUST_PROXY` | — (não confia) | `true` ou número de saltos. Definir quando a API rodar atrás de reverse proxy/LB para o rate limit por IP funcionar corretamente |
+| `ADMIN_NAME` / `ADMIN_EMAIL` / `ADMIN_PASSWORD` | — | Lidas apenas pelo seed (`prisma/seed.ts`) para criar a conta ADMIN inicial. Não são usadas em runtime |
 
-`DATABASE_URL`, `JWT_SECRET` e as três variáveis do Cloudinary são obrigatórias e validadas no startup por [`src/config/env.ts`](src/config/env.ts) — se alguma faltar ou for inválida, o processo encerra com `process.exit(1)` e uma mensagem listando o(s) campo(s) ausente(s), em vez de subir em estado inconsistente. Veja `.env.example` na raiz do backend para o template completo.
+`DATABASE_URL`, `JWT_SECRET` e as três variáveis do Cloudinary são obrigatórias e validadas no startup por [`src/config/env.ts`](src/config/env.ts) — se alguma faltar ou for inválida, o processo encerra com `process.exit(1)` e uma mensagem listando o(s) campo(s) ausente(s), em vez de subir em estado inconsistente. `TRUST_PROXY` é opcional e também validada quando presente. Veja `.env.example` na raiz do backend para o template completo.
+
+### Seed — primeiro ADMIN
+
+**Arquivo:** [prisma/seed.ts](prisma/seed.ts) · **Comando:** `npx prisma db seed` (configurado em `prisma.config.ts` → `migrations.seed`)
+
+Como `POST /users` exige `ADMIN`, a conta inicial é criada por fora da API. O seed lê `ADMIN_EMAIL` / `ADMIN_PASSWORD` / `ADMIN_NAME` do `.env`, valida a força da senha (mesma política do schema), cria o usuário com `role: ADMIN` e senha com hash bcrypt custo 12. É idempotente — se o e-mail já existir, não faz nada. No `docker-compose` (dev) pode ser rodado com `docker compose exec api npx prisma db seed`.
 
 ### Dockerfile
 
@@ -1593,14 +1681,20 @@ Exportado como singleton e importado diretamente nos Services e no middleware `i
 
 ## Segurança
 
-Revisão de segurança feita em 2026-08-04. Todos os itens abaixo estão implementados e testados (unitários + validação manual com Docker rodando).
+Revisão inicial em 2026-08-04. **2ª rodada em 2026-09** (itens marcados 🆕). Todos os itens abaixo estão implementados; suíte de testes 199/199.
 
 ### Implementado
 
 | Área | Medida | Onde |
 |---|---|---|
-| Rate limiting | `generalLimiter` (300 req/15min, todas as rotas) + `authLimiter` (10 req/15min, `/session` e `/users`) | [src/config/rateLimit.ts](src/config/rateLimit.ts) |
-| CORS | Restrito via `CORS_ORIGIN` (lista de origens); sem a variável, permanece permissivo (`origin: true`) — configurar assim que houver um frontend com domínio definido | [src/server.ts](src/server.ts) |
+| 🆕 Gestão de usuários restrita | `POST` / `GET` / `DELETE /users` exigem `ADMIN` (antes o cadastro era público). 1º ADMIN via seed; contas seguintes criadas/listadas/excluídas pela tela **Usuários** do dashboard. `DELETE` bloqueia autoexclusão e o último admin | [routes.ts](src/routes.ts), [prisma/seed.ts](prisma/seed.ts), [DeleteUserService.ts](src/services/user/DeleteUserService.ts) |
+| Rate limiting | `generalLimiter` (600 req/15min, todas as rotas) + `authLimiter` em `/session`: 🆕 chave **IP + e-mail**, `skipSuccessfulRequests`, 20/15min — não trava a loja inteira atrás de um NAT | [src/config/rateLimit.ts](src/config/rateLimit.ts) |
+| 🆕 Auditoria de pedidos | `auditLog` também em `PUT /order/send`, `PUT /order/finish`, `DELETE /order/delete` | [routes.ts](src/routes.ts) |
+| 🆕 `trust proxy` configurável | `TRUST_PROXY` (`true` / nº de saltos) aplicado no startup; validado no env | [src/server.ts](src/server.ts), [src/config/env.ts](src/config/env.ts) |
+| 🆕 Limite de payload | `express.json({ limit: "10kb" })` | [src/server.ts](src/server.ts) |
+| 🆕 Limites de entrada | `table` ≤ 999 e `name` ≤ 120 no `createOrderSchema` | [src/schemas/orderSchema.ts](src/schemas/orderSchema.ts) |
+| 🆕 Query mínima | `isAdmin` usa `select: { role: true }` — não carrega o hash de senha | [src/middlewares/isAdmin.ts](src/middlewares/isAdmin.ts) |
+| CORS | Restrito via `CORS_ORIGIN` (lista de origens); sem a variável, permanece permissivo (`origin: true`) e 🆕 emite `console.warn` no startup | [src/server.ts](src/server.ts) |
 | Headers HTTP | `helmet()` — HSTS, `X-Content-Type-Options`, `X-Frame-Options`, remoção de `X-Powered-By`, etc. | [src/server.ts](src/server.ts) |
 | Validação de env no startup | `DATABASE_URL`, `JWT_SECRET`, credenciais do Cloudinary validadas via Zod; processo recusa subir se algo faltar | [src/config/env.ts](src/config/env.ts) |
 | Hash de senha | bcrypt, custo 12 (era 8) | [CreateUserService.ts](src/services/user/CreateUserService.ts) |
@@ -1613,7 +1707,12 @@ Revisão de segurança feita em 2026-08-04. Todos os itens abaixo estão impleme
 | Segredos | `.env` fora do git (`.gitignore`); `.env.example` documenta as variáveis sem expor valores reais | [.env.example](.env.example) |
 | Dependências | `npm audit` resolveu 12 de 13 vulnerabilidades conhecidas (`npm audit fix`, sem `--force`, sem mudar ranges no `package.json`) — incluindo `qs`/`body-parser` (usadas pelo `express` em runtime). Ver detalhamento abaixo | `package-lock.json` |
 
-Também confirmado por revisão de código: nenhum Controller usa spread de `req.body`/`req.query` direto no Prisma (sempre desestruturação explícita de campos) — sem risco de mass assignment (ex.: um cliente não consegue setar `role` ou `tokenVersion` via `POST /users`). Senhas nunca são logadas ou retornadas em respostas (`select` explícito em todas as queries de usuário). Erros inesperados (500) não vazam stack trace ao cliente.
+Também confirmado por revisão de código: nenhum Controller usa spread de `req.body`/`req.query` direto no Prisma (sempre desestruturação explícita de campos) — sem risco de mass assignment. `role` em `POST /users` só é aceito porque a rota é restrita a `ADMIN` (o Zod valida `enum(["STAFF","ADMIN"])`). Senhas nunca são logadas ou retornadas em respostas (`select` explícito em todas as queries de usuário). Erros inesperados (500) não vazam stack trace ao cliente.
+
+### Pendente — ação de ambiente/ops (fora do código)
+
+- **Segredos sincronizados pelo OneDrive**: o `.env` está fora do git, mas o repositório vive em `OneDrive\Desktop`, então `JWT_SECRET`, `CLOUDINARY_API_SECRET` e credenciais do banco foram para a nuvem da conta. **Mover o repositório para fora do OneDrive e rotacionar esses segredos.**
+- **Dashboard exige `ADMIN`**: a cozinha precisa de conta ADMIN para ver pedidos. Avaliar papel `KITCHEN` ou liberar a visão de pedidos para `STAFF`.
 
 ### Dependências (`npm audit`)
 
@@ -1627,10 +1726,10 @@ Recomenda-se rodar `npm audit` periodicamente (ex.: antes de cada release), já 
 
 ### Conhecido e aceito (trade-off deliberado, não é uma falha)
 
-- **Rotas de pedido sem escopo por usuário**: qualquer `STAFF` autenticado pode ver/editar/cancelar qualquer pedido (não há "dono" do pedido). Isso é intencional — é um sistema de balcão compartilhado entre atendentes, não multi-tenant.
-- **`CORS_ORIGIN` permissivo por padrão**: não há frontend com domínio definido ainda. Quando existir, definir `CORS_ORIGIN` no `.env` de produção.
+- **Rotas de pedido sem escopo por usuário**: qualquer usuário autenticado pode ver/editar/cancelar qualquer pedido (não há "dono" do pedido). Isso é intencional — é um sistema de balcão compartilhado entre atendentes, não multi-tenant. As mutações agora ficam registradas no `auditLog`.
+- **`CORS_ORIGIN` permissivo por padrão**: irrelevante para o app mobile nativo. Definir `CORS_ORIGIN` no `.env` de produção quando o dashboard tiver domínio.
 
-### Ainda não avaliado — depende da topologia de deploy
+### Ainda depende da topologia de deploy
 
-- **`trust proxy` do Express**: se a API for colocada atrás de um reverse proxy/load balancer em produção (nginx, Cloudflare, etc.), configurar `app.set("trust proxy", ...)` com o número de saltos correto. Sem isso, o rate limiting por IP pode não diferenciar clientes (todos aparecem com o IP do proxy) ou, se configurado errado (confiando cegamente em `X-Forwarded-For`), pode ser burlado por spoofing de IP. Não configurado agora porque não há proxy no ambiente atual (`docker-compose.yml` expõe a API direto).
-- **HTTPS**: terminação TLS não é responsabilidade da aplicação — deve ser feita pelo reverse proxy/plataforma de deploy quando o projeto for para produção.
+- **`TRUST_PROXY`**: já implementado e configurável por env. Definir com o número de saltos correto quando a API entrar atrás de um proxy (`docker-compose` atual expõe a API direto, então fica vazio).
+- **HTTPS**: terminação TLS deve ser feita pelo reverse proxy/plataforma de deploy.
