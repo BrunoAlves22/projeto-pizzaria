@@ -5,6 +5,8 @@ App mobile onde o **garçom anota o pedido do cliente na mesa** e **envia para a
 Leia antes: [`../PROJECT_CONTEXT.md`](../PROJECT_CONTEXT.md) e [`../backend/PROJECT_CONTEXT.md`](../backend/PROJECT_CONTEXT.md).
 Para o design das telas: [`STITCH_PROMPT.md`](STITCH_PROMPT.md) (prompt pronto para o Stitch, reaproveitando a identidade do dashboard).
 
+> **Estado atual:** o scaffold já existe — `create-expo-app` (Expo SDK 57, `expo-router`, TypeScript, template padrão de _tabs_). O código do router fica em **`src/app/`** e o alias `@/*` aponta para `src/*`. Rodar: `npm install` e `npm start` (ou `npm run android` / `npm run ios` / `npm run web`). O conteúdo de `src/app/` e `src/components/` ainda é o exemplo do template — substituir seguindo este guia. Ainda **não** instalados: `expo-secure-store`, `@tanstack/react-query`, `react-hook-form`, `zod`.
+
 ---
 
 ## 1. O que o app faz
@@ -62,38 +64,41 @@ Regras que o app precisa respeitar:
 
 ---
 
-## 3. Estrutura de pastas sugerida
+## 3. Estrutura de pastas
+
+O scaffold já traz `src/app/` (router), `src/components/`, `src/hooks/`, `src/constants/theme.ts`
+e `src/global.css` com o exemplo do template. Alvo depois de adaptar:
 
 ```
 mobile/
-├── app/                          # Expo Router
-│   ├── _layout.tsx               # Providers (QueryClient), guarda de auth
-│   ├── login.tsx
-│   ├── (app)/
-│   │   ├── _layout.tsx           # Tabs: Cardápio | Comandas | Perfil
-│   │   ├── index.tsx             # Cardápio
-│   │   ├── orders.tsx            # Comandas em rascunho (GET /orders?draft=true)
-│   │   ├── order/[id].tsx        # Tela da comanda (itens + enviar)
-│   │   ├── new-order.tsx         # Form: mesa + nome do cliente
-│   │   └── profile.tsx           # Usuário logado + sair
-├── src/
-│   ├── api/
-│   │   ├── client.ts             # fetch wrapper + baseURL + Authorization
-│   │   ├── auth.ts               # login, logout, me
-│   │   ├── catalog.ts            # categorias, produtos
-│   │   └── orders.ts             # create, addItem, removeItem, detail, send, list
-│   ├── auth/
-│   │   ├── token.ts              # secure-store get/set/delete
-│   │   └── AuthContext.tsx
-│   ├── lib/
-│   │   ├── money.ts              # formatBRL(centavos)
-│   │   └── types.ts              # User, Category, Product, Order, OrderItem
-│   └── components/               # ProductCard, QuantityStepper, OrderItemRow...
 ├── app.json
-├── .env                          # não commitar
-└── package.json
+├── .env                          # EXPO_PUBLIC_API_URL — não commitar
+└── src/
+    ├── app/                      # Expo Router (fica em src/, não na raiz)
+    │   ├── _layout.tsx           # Providers (QueryClient), guarda de auth
+    │   ├── login.tsx
+    │   └── (app)/
+    │       ├── _layout.tsx       # Tabs: Cardápio | Comandas | Perfil
+    │       ├── index.tsx         # Cardápio
+    │       ├── orders.tsx        # Comandas em rascunho (GET /orders?draft=true)
+    │       ├── order/[id].tsx    # Tela da comanda (itens + enviar)
+    │       ├── new-order.tsx     # Form: mesa + nome do cliente
+    │       └── profile.tsx       # Usuário logado + sair
+    ├── api/
+    │   ├── client.ts             # fetch wrapper + baseURL + Authorization
+    │   ├── auth.ts               # login, logout, me
+    │   ├── catalog.ts            # categorias, produtos
+    │   └── orders.ts             # create, addItem, removeItem, detail, send, list
+    ├── auth/
+    │   ├── token.ts              # secure-store get/set/delete
+    │   └── AuthContext.tsx
+    ├── lib/
+    │   ├── money.ts              # formatBRL(centavos)
+    │   └── types.ts              # User, Category, Product, Order, OrderItem
+    └── components/               # ProductCard, QuantityStepper, OrderItemRow...
 ```
 
+O alias `@/*` resolve para `src/*` (ex.: `@/api/client`, `@/auth/token`).
 Os tipos de `src/lib/types.ts` podem ser copiados de [`../frontend/src/lib/types.ts`](../frontend/src/lib/types.ts).
 
 ---
@@ -122,7 +127,7 @@ EXPO_PUBLIC_API_URL=http://192.168.0.10:3333
 `src/api/client.ts`:
 
 ```ts
-import { getToken } from "@/src/auth/token";
+import { getToken } from "@/auth/token";
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL!;
 
@@ -328,9 +333,9 @@ Lista as comandas ainda não enviadas (com `orderItems` embutidos). Útil para o
 
 ## 10. Passo a passo de construção
 
-1. **Scaffold**: `npx create-expo-app@latest mobile -t` (template com TypeScript + Expo Router). Configurar `EXPO_PUBLIC_API_URL`.
+1. **Scaffold** — ✅ feito (`create-expo-app`, Expo SDK 57). Falta: `npm i expo-secure-store @tanstack/react-query react-hook-form zod`, criar `.env` com `EXPO_PUBLIC_API_URL`, e limpar o exemplo de `src/app/` e `src/components/`.
 2. **Tipos e cliente HTTP**: copiar `types.ts` do frontend; implementar `src/api/client.ts` (seção 5).
-3. **Auth**: `token.ts` (secure-store), `AuthContext`, tela de `login`, guarda no `app/_layout.tsx` (sem token → `login`; com token válido via `GET /me` → `(app)`).
+3. **Auth**: `token.ts` (secure-store), `AuthContext`, tela de `login`, guarda no `src/app/_layout.tsx` (sem token → `login`; com token válido via `GET /me` → `(app)`).
 4. **Cardápio**: `GET /category-list` + `GET /products`; `ProductCard` com preço formatado; agrupar por categoria.
 5. **Nova comanda**: form `mesa` + `nome` → `POST /order` → navegar para `order/[id]`.
 6. **Tela da comanda**: `GET /order/detail`; adicionar item (seleção de produto + `QuantityStepper` → `POST /order/add`); remover linha (`DELETE /order/remove`); total; botão **Enviar** (`PUT /order/send`), desabilitado se sem itens.
