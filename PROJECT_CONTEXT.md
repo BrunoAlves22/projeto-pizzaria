@@ -87,7 +87,7 @@ Projeto Pizzaria/
   - `STAFF` — padrão. Cria/edita/envia pedidos, lista cardápio. **É o papel do garçom no app mobile.**
   - `ADMIN` — tudo do STAFF + cadastro de categorias/produtos + (hoje) acesso ao dashboard web.
 - As **rotas de pedido não exigem ADMIN** — qualquer usuário autenticado pode criar, listar, editar, enviar, finalizar ou deletar qualquer pedido. É intencional (balcão compartilhado), não multi-tenant. As mutações (`send`/`finish`/`delete`) passam pelo `auditLog`.
-- **Cadastro de usuários (`POST /users`) é restrito a `ADMIN`.** O primeiro ADMIN é criado pelo seed: definir `ADMIN_EMAIL`/`ADMIN_PASSWORD` no `.env` do backend e rodar `npx prisma db seed`. Não há mais tela pública de registro — a partir daí o ADMIN cria e lista as contas (atendente ou administrador) na tela **Usuários** do dashboard (`/dashboard/users`, `GET /users` + `POST /users`).
+- **Gestão de usuários é restrita a `ADMIN`** (`POST` / `GET` / `DELETE /users`). O primeiro ADMIN é criado pelo seed: definir `ADMIN_EMAIL`/`ADMIN_PASSWORD` no `.env` do backend e rodar `npx prisma db seed`. Não há mais tela pública de registro — a partir daí o ADMIN cria, lista e exclui as contas (atendente ou administrador) na tela **Usuários** do dashboard (`/dashboard/users`). A exclusão bloqueia a própria conta e o último administrador.
 
 ### Decisão em aberto (ver revisão de segurança)
 
@@ -103,6 +103,7 @@ O dashboard web hoje exige `ADMIN`. Como o garçom é `STAFF`, isso força torna
 |---|---|---|---|---|
 | `POST` | `/users` | Sim | Sim | — (o ADMIN provisiona as contas pela tela **Usuários**; 1º ADMIN vem do seed) |
 | `GET` | `/users` | Sim | Sim | — (listagem de contas, usada pela tela **Usuários** do dashboard) |
+| `DELETE` | `/users` | Sim | Sim | — (exclui uma conta; bloqueia autoexclusão e o último admin) |
 | `POST` | `/session` | Não | Não | **Login do garçom** |
 | `GET` | `/me` | Sim | Não | Validar sessão / dados do usuário |
 | `POST` | `/logout` | Sim | Não | Sair (revoga o token) |
@@ -168,11 +169,11 @@ npm run dev
 
 **Pronto:**
 - API completa (usuários, categorias, produtos, pedidos) com testes (Jest + supertest).
-- Dashboard web: login, sidebar, CRUD de categorias e produtos, painel de pedidos com polling, detalhes, finalizar/cancelar, e **tela Usuários** (listar contas + criar atendente/admin).
+- Dashboard web: login, sidebar, CRUD de categorias e produtos, painel de pedidos com polling, detalhes, finalizar/cancelar, e **tela Usuários** (listar, criar e excluir contas de atendente/admin).
 
 **A fazer:**
 - **App mobile do garçom** (`mobile/`) — ver [`mobile/README.md`](mobile/README.md).
 - Papel `KITCHEN` ou ajuste de autorização do dashboard.
 - Endurecimento para produção: definir `CORS_ORIGIN` e `TRUST_PROXY`, HTTPS/TLS no proxy, **tirar o repositório do OneDrive e rotacionar `JWT_SECRET` + chaves do Cloudinary** (segredos foram sincronizados).
 
-**Correções de segurança já aplicadas (2026-09):** `POST /users` restrito a ADMIN + seed do 1º admin + tela Usuários no dashboard (`GET /users` ADMIN); `auditLog` nas mutações de pedido; rate limit de login por IP+e-mail com `skipSuccessfulRequests`; `TRUST_PROXY` configurável; `express.json` com limite de 10 kb; `isAdmin` com `select` mínimo; cookie do dashboard alinhado a 1 dia; `assertAdmin()` nas Server Actions de mutação; Dockerfile de produção do frontend (multi-stage, non-root, `output: standalone`); limites em `table`/`name` do pedido.
+**Correções de segurança já aplicadas (2026-09):** gestão de usuários restrita a ADMIN (`POST`/`GET`/`DELETE /users`) + seed do 1º admin + tela Usuários no dashboard (a exclusão bloqueia autoexclusão e o último admin); `auditLog` nas mutações de pedido; rate limit de login por IP+e-mail com `skipSuccessfulRequests`; `TRUST_PROXY` configurável; `express.json` com limite de 10 kb; `isAdmin` com `select` mínimo; cookie do dashboard alinhado a 1 dia; `assertAdmin()` nas Server Actions de mutação; Dockerfile de produção do frontend (multi-stage, non-root, `output: standalone`); limites em `table`/`name` do pedido.

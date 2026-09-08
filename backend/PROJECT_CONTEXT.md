@@ -91,12 +91,14 @@ backend/
     │   ├── user/
     │   │   ├── CreateUserController.ts
     │   │   ├── ListUserController.ts
+    │   │   ├── DeleteUserController.ts
     │   │   ├── AuthUserController.ts
     │   │   ├── DetailUserController.ts
     │   │   ├── LogoutController.ts
     │   │   └── __tests__/
     │   │       ├── CreateUserController.spec.ts
     │   │       ├── ListUserController.spec.ts
+    │   │       ├── DeleteUserController.spec.ts
     │   │       ├── AuthUserController.spec.ts
     │   │       ├── DetailUserController.spec.ts
     │   │       └── LogoutController.spec.ts
@@ -138,12 +140,14 @@ backend/
     │   ├── user/
     │   │   ├── CreateUserService.ts
     │   │   ├── ListUserService.ts
+    │   │   ├── DeleteUserService.ts
     │   │   ├── AuthUserService.ts
     │   │   ├── DetailUserService.ts
     │   │   ├── LogoutService.ts
     │   │   └── __tests__/
     │   │       ├── CreateUserService.spec.ts
     │   │       ├── ListUserService.spec.ts
+    │   │       ├── DeleteUserService.spec.ts
     │   │       ├── AuthUserService.spec.ts
     │   │       ├── DetailUserService.spec.ts
     │   │       └── LogoutService.spec.ts
@@ -437,6 +441,7 @@ Relação: `Order 1 ── N OrderItem`
 |---|---|---|---|---|
 | `POST` | `/users` | Sim | Sim | `createUserSchema` |
 | `GET` | `/users` | Sim | Sim | — |
+| `DELETE` | `/users` | Sim | Sim | `deleteUserSchema` |
 | `POST` | `/session` | Não | Não | `authUserSchema` |
 | `GET` | `/me` | Sim | Não | — |
 | `POST` | `/logout` | Sim | Não | — |
@@ -528,6 +533,36 @@ usa `select` explícito (nunca retorna `password` nem `tokenVersion`) e ordena p
 **Erros:**
 - `401` — não autenticado
 - `403` — usuário não é ADMIN
+
+---
+
+### `DELETE /users` — Excluir usuário
+
+**Middlewares:** `isAuthenticated` → `isAdmin` → `auditLog` → `validateSchema(deleteUserSchema)`
+**Header:** `Authorization: Bearer <token>` (role `ADMIN`)
+
+**Query params:**
+```
+user_id: string   (obrigatório)
+```
+
+**Fluxo (`DeleteUserService`):** recebe `userId` (query) e `requesterId` (`req.user_id`).
+1. Se `userId === requesterId` → `AppError("Você não pode excluir a própria conta", 400)`.
+2. Busca o usuário (`select: { id, role }`); se não existir → `AppError("Usuário não encontrado", 404)`.
+3. Se o alvo é `ADMIN`, conta quantos `ADMIN` existem; se for o único → `AppError("Não é possível excluir o último administrador", 409)`.
+4. `prisma.user.delete`. O JWT do usuário excluído para de valer na requisição seguinte (o `isAuthenticated` responde `401` quando o `findFirst` pelo `sub` não acha ninguém).
+
+**Resposta 200:**
+```json
+{ "message": "Usuário excluído com sucesso" }
+```
+
+**Erros:**
+- `400` — tentativa de excluir a própria conta (ou `user_id` ausente)
+- `401` — não autenticado
+- `403` — usuário não é ADMIN
+- `404` — usuário não encontrado
+- `409` — é o último administrador
 
 ---
 
@@ -1536,6 +1571,7 @@ src/**/*.ts
 |---|---|
 | `CreateUserController` | 201 criado, 409 duplicado, 500 erro inesperado |
 | `ListUserController` | 200 com lista, 200 lista vazia, 500 erro inesperado |
+| `DeleteUserController` | 200 sucesso, passa `userId` + `requesterId` corretos, 400 autoexclusão, 404 não encontrado, 409 último admin, 500 erro inesperado |
 | `AuthUserController` | 200 autenticado, 401 inválido, 500 erro inesperado |
 | `DetailUserController` | 200 encontrado, 404 não encontrado, 500 erro inesperado |
 | `LogoutController` | 200 sessões encerradas, chama service com id correto, 500 erro inesperado |
@@ -1555,6 +1591,7 @@ src/**/*.ts
 | `DeleteOrderController` | 200 pedido deletado, 404 pedido não encontrado, 500 erro inesperado |
 | `CreateUserService` | cria usuário, rejeita duplicado, hash da senha, omite `role` quando ausente, encaminha `role` quando informado |
 | `ListUserService` | lista usuários, `select` sem campos sensíveis + ordenação `createdAt` desc, lista vazia, propaga erro do Prisma |
+| `DeleteUserService` | exclui STAFF, bloqueia autoexclusão (400), 404 se não existe, bloqueia último admin (409), exclui admin quando há outros, propaga erro do Prisma |
 | `AuthUserService` | retorna token, rejeita e-mail inválido, rejeita senha inválida |
 | `DetailUserService` | retorna usuário, lança 404 se não encontrar |
 | `LogoutService` | incrementa `tokenVersion`, retorna mensagem de sucesso, propaga erros do Prisma |
@@ -1644,13 +1681,13 @@ Exportado como singleton e importado diretamente nos Services e no middleware `i
 
 ## Segurança
 
-Revisão inicial em 2026-08-04. **2ª rodada em 2026-09** (itens marcados 🆕). Todos os itens abaixo estão implementados; suíte de testes 187/187.
+Revisão inicial em 2026-08-04. **2ª rodada em 2026-09** (itens marcados 🆕). Todos os itens abaixo estão implementados; suíte de testes 199/199.
 
 ### Implementado
 
 | Área | Medida | Onde |
 |---|---|---|
-| 🆕 Cadastro restrito | `POST /users` e `GET /users` exigem `ADMIN` (antes o cadastro era público). 1º ADMIN via seed; contas seguintes pela tela **Usuários** do dashboard | [routes.ts](src/routes.ts), [prisma/seed.ts](prisma/seed.ts), [ListUserController.ts](src/controllers/user/ListUserController.ts) |
+| 🆕 Gestão de usuários restrita | `POST` / `GET` / `DELETE /users` exigem `ADMIN` (antes o cadastro era público). 1º ADMIN via seed; contas seguintes criadas/listadas/excluídas pela tela **Usuários** do dashboard. `DELETE` bloqueia autoexclusão e o último admin | [routes.ts](src/routes.ts), [prisma/seed.ts](prisma/seed.ts), [DeleteUserService.ts](src/services/user/DeleteUserService.ts) |
 | Rate limiting | `generalLimiter` (600 req/15min, todas as rotas) + `authLimiter` em `/session`: 🆕 chave **IP + e-mail**, `skipSuccessfulRequests`, 20/15min — não trava a loja inteira atrás de um NAT | [src/config/rateLimit.ts](src/config/rateLimit.ts) |
 | 🆕 Auditoria de pedidos | `auditLog` também em `PUT /order/send`, `PUT /order/finish`, `DELETE /order/delete` | [routes.ts](src/routes.ts) |
 | 🆕 `trust proxy` configurável | `TRUST_PROXY` (`true` / nº de saltos) aplicado no startup; validado no env | [src/server.ts](src/server.ts), [src/config/env.ts](src/config/env.ts) |

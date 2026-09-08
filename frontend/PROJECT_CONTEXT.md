@@ -114,7 +114,7 @@ frontend/
             ├── orders/         # Painel de pedidos (board, card, sheet, toolbar, stats, tabs, alerts…)
             ├── categories/     # create-category-dialog, category-row-actions
             ├── products/       # create-product-dialog, product-row-actions, price-input
-            └── users/          # create-user-dialog
+            └── users/          # create-user-dialog, user-row-actions (excluir)
 ```
 
 > Não existe a rota `/register`. O autocadastro foi removido — contas são criadas pela tela **Usuários** (só `ADMIN`).
@@ -197,7 +197,7 @@ Flat config: `eslint-config-next/core-web-vitals` + `eslint-config-next/typescri
 | `/dashboard` | Server Component | `proxy.ts` + `layout.tsx` (`requiredAdminUser`) | Painel de pedidos (`<OrdersBoard>`) |
 | `/dashboard/categories` | Server Component | idem | Tabela de categorias + criar/excluir/mover produtos |
 | `/dashboard/products` | Server Component | idem | Tabela (desktop) / cards (mobile) de produtos + criar/arquivar/excluir |
-| `/dashboard/users` | Server Component | idem | Tabela de contas + diálogo "Novo usuário" (`STAFF`/`ADMIN`) |
+| `/dashboard/users` | Server Component | idem | Tabela de contas + diálogo "Novo usuário" (`STAFF`/`ADMIN`) + excluir conta (bloqueado na própria linha) |
 
 O `dashboard/layout.tsx` chama `requiredAdminUser()` (redireciona) e monta `SidebarProvider` + `<AppSidebar user={user} />` + `<main>`.
 
@@ -273,6 +273,7 @@ Todas em `src/actions/*.ts` com `"use server"`. As de mutação chamam `assertAd
 | | `logoutUser` | `POST /logout` | apaga o cookie + `redirect` |
 | `user.ts` | `listUsers()` | `GET /users` | `assertAdmin`; usada pela página Usuários |
 | | `createUser(prev, formData)` | `POST /users` | `assertAdmin`; envia `role` só se for `STAFF`/`ADMIN` |
+| | `deleteUser(userId)` | `DELETE /users` | `assertAdmin`; lança `Error` com a mensagem da API (usada pelo `ConfirmDialog`) |
 | `category.ts` | `createCategory` | `POST /category` | `assertAdmin` |
 | | `deleteCategory` | `DELETE /category` | `assertAdmin` |
 | | `moveCategoryProducts` | `PATCH /category/products` | `assertAdmin`; revalida categories + products |
@@ -315,7 +316,7 @@ Cada `page.tsx` de dashboard define um helper `async` local (`getCategoriesData`
 - **`confirm-dialog.tsx`** — diálogo genérico de confirmação: `onConfirm: () => Promise<void>`, estado `isPending` (via `useTransition`), captura de erro, `warning` opcional, `hideConfirm` / `confirmDisabled`, `children` (ex.: um `<Select>`). Usado por categorias e produtos.
 - **`categories/`** — `create-category-dialog` (diálogo com remount via `formKey` no fechamento) · `category-row-actions` (excluir; se a categoria tem produtos, obriga escolher uma categoria destino e chama `moveCategoryProducts` antes de `deleteCategory`).
 - **`products/`** — `create-product-dialog` (nome, descrição, categoria via `<Select>`, `price-input`, upload de imagem com preview `blob:`) · `product-row-actions` (arquivar / excluir) · `price-input` (mostra `R$ 45,90`, envia só dígitos em `<input hidden name="price">`).
-- **`users/`** — `create-user-dialog` (nome, e-mail, senha com regras, cargo Atendente/Admin via `<Select>`).
+- **`users/`** — `create-user-dialog` (nome, e-mail, senha com regras, cargo Atendente/Admin via `<Select>`) · `user-row-actions` (excluir via `ConfirmDialog`; some na linha do próprio usuário, avisa quando o alvo é ADMIN).
 - **`orders/`** — ver a seção seguinte.
 
 ---
@@ -412,7 +413,7 @@ O serviço `frontend` usa **`build.target: deps`** (só o estágio com `node_mod
 |---|---|---|
 | `proxy.ts`, `lib/auth.ts` (`getUser`) | `GET /me` | Bearer |
 | `actions/auth.ts` | `POST /session`, `POST /logout` | — / Bearer |
-| `actions/user.ts` | `GET /users`, `POST /users` | Bearer + ADMIN |
+| `actions/user.ts` | `GET /users`, `POST /users`, `DELETE /users` | Bearer + ADMIN |
 | `actions/category.ts`, `categories/page.tsx` | `GET /category-list`, `POST /category`, `DELETE /category`, `PATCH /category/products` | Bearer (+ ADMIN nas mutações) |
 | `actions/product.ts`, `products/page.tsx` | `GET /products`, `POST /product`, `PATCH /product`, `DELETE /product` | Bearer (+ ADMIN nas mutações) |
 | `actions/order.ts`, `dashboard/page.tsx` | `GET /orders?draft=false`, `PUT /order/finish`, `DELETE /order/delete` | Bearer |

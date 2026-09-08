@@ -21,6 +21,7 @@ Authorization: Bearer <token>
 |---|---|---|---|---|
 | `POST` | `/users` | Sim | Sim | `createUserSchema` |
 | `GET` | `/users` | Sim | Sim | — |
+| `DELETE` | `/users` | Sim | Sim | `deleteUserSchema` |
 | `POST` | `/session` | Não | Não | `authUserSchema` |
 | `GET` | `/me` | Sim | Não | — |
 | `POST` | `/logout` | Sim | Não | — |
@@ -99,6 +100,21 @@ Usada pela tela **Usuários** do dashboard. `select` explícito — nunca retorn
 ```
 
 **Erros:** `401` não autenticado · `403` não é ADMIN
+
+---
+
+### `DELETE /users` — Excluir usuário
+
+**Middlewares:** `isAuthenticated` → `isAdmin` → `auditLog` → `validateSchema(deleteUserSchema)`
+**Header:** `Authorization: Bearer <token>` (role `ADMIN`)
+
+**Query params:** `user_id` (obrigatório)
+
+Bloqueios: não é possível excluir a própria conta (`400`) nem o último administrador (`409`). O JWT do usuário excluído deixa de valer na requisição seguinte.
+
+**Resposta 200:** `{ "message": "Usuário excluído com sucesso" }`
+
+**Erros:** `400` autoexclusão / `user_id` ausente · `401` não autenticado · `403` não é ADMIN · `404` não encontrado · `409` último administrador
 
 ---
 
